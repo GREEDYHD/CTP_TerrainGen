@@ -185,9 +185,4 @@
       <Filter>Assets</Filter>
     </None>
   </ItemGroup>
-  <ItemGroup>
-    <FxCompile Include="PerlinNoise.hlsl">
-      <Filter>Assets</Filter>
-    </FxCompile>
-  </ItemGroup>
 </Project>

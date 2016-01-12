@@ -36,9 +36,9 @@ bool Terrain::Initialize(ID3D11Device* device, char* heightMapFilename, WCHAR* t
 
 	// Normalize the height of the height map.
 
-	ConstructGrid();
-	//GenerateFractalTerrain(1, 50, 1, 1);
-	//NormalizeHeightMap();
+	//ConstructGrid();
+	GenerateFractalTerrain(10, 10, 0.5f, 8);
+	NormalizeHeightMap();
 
 	result = CalculateNormals();
 	if (!result)
@@ -178,7 +178,7 @@ bool Terrain::LoadHeightMap(char* filename)
 
 			index = (m_terrainHeight * j) + i;
 
-			double noise = m_PerlinNoise->PerlinNoise2D(1, 1, 1, i, j);
+			double noise = m_PerlinNoise->PerlinNoise2D(1, 1.0f, 1, i, j);
 
 			m_heightMap[index].x = (float)i;
 			m_heightMap[index].y = floor(255 * noise);
@@ -198,8 +198,6 @@ bool Terrain::LoadHeightMap(char* filename)
 void Terrain::ConstructGrid()
 {
 	int i, j, k = 0;
-	int frequency = 2;
-	int amplitude = 100;
 
 	m_terrainWidth = 500;
 	m_terrainHeight = 500;
@@ -219,43 +217,35 @@ void Terrain::ConstructGrid()
 			m_heightMap[index].y = noise;
 			m_heightMap[index].z = (float)j;
 
-
 			k += 3;
 		}
 	}
 }
 
-
 void Terrain::GenerateFractalTerrain(int seed, float noiseSize, float persistence, int octaves)
 {
-	m_terrainWidth = 500;
-	m_terrainHeight = 500;
+	m_terrainWidth = 256;
+	m_terrainHeight = 256;
 
 	m_heightMap = new HeightMapType[m_terrainWidth * m_terrainHeight];
-	
+
 	for (int y = 0; y < m_terrainHeight; y++)
 	{
-		int y1 = y;
-
 		for (int x = 0; x < m_terrainWidth; x++)
 		{
-			int x1 = x;
-
-			double xf = (x1 / (float)m_terrainWidth) * noiseSize;
-			double yf = (y1 / (float)m_terrainHeight) * noiseSize;
+			double xf = (x / (float)m_terrainWidth * noiseSize);
+			double yf = (y / (float)m_terrainHeight * noiseSize);
 
 			float total = 0.0f;
-			for (int i = 0; i < octaves; i++) {
-				double f = m_PerlinNoise->PerlinNoise2D(seed, persistence, i, xf, yf);
-				total += f;
+			for (int i = 0; i < octaves; i++)
+			{
+				double f = 200 * m_PerlinNoise->PerlinNoise2D(seed, persistence, i, (float)xf, (float)yf);
+				total += (float)f;
 			}
-			int b = (int)(128 + total * 128.0f);
-			if (b < 0) b = 0;
-			if (b > 255) b = 255;
 
-			m_heightMap[x1 + y1 * m_terrainHeight].x = (float)x;
-			m_heightMap[x1 + y1 * m_terrainHeight].y = (double)(b / 255.0f) * 20;
-			m_heightMap[x1 + y1 * m_terrainHeight].z = (float)y;
+			m_heightMap[(y * m_terrainHeight) + x].x = (float)x;
+			m_heightMap[(y * m_terrainHeight) + x].y = (float)total;
+			m_heightMap[(y * m_terrainHeight) + x].z = (float)y;
 		}
 	}
 }

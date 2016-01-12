@@ -1,5 +1,5 @@
-#ifndef _SE_DIRECT3D_H_
-#define _SE_DIRECT3D_H_
+#ifndef _DIRECT3D_H_
+#define _DIRECT3D_H_
 
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "dxgi.lib")
