@@ -1,5 +1,5 @@
-#ifndef _TextURE_H_
-#define _TextURE_H_
+#ifndef _TEXTURE_H_
+#define _TEXTURE_H_
 
 #include <d3d11.h>
 
@@ -10,7 +10,6 @@ public:
 	Texture(const Texture&);
 	~Texture();
 	
-
 	bool Initialize(ID3D11Device*, WCHAR*);
 	void Shutdown();
 
@@ -19,6 +18,7 @@ public:
 private:
 	
 	ID3D11ShaderResourceView* m_texture;
+
 };
 
 #endif

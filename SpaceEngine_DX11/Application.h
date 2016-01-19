@@ -22,6 +22,8 @@ const float SCREEN_NEAR = 0.1f;
 #include "Frustum.h"
 #include "QuadTree.h"
 
+#include <vector>
+
 class Application
 {
 public:
@@ -41,7 +43,7 @@ private:
 	Input* m_Input;
 	Direct3D* m_Direct3D;
 	Camera* m_Camera;
-	Terrain* m_Terrain;
+	vector<Terrain*> m_Terrain;
 	ShaderColor* m_ShaderColor;
 	Timer* m_Timer;
 	CameraController* m_CameraController;
@@ -53,6 +55,8 @@ private:
 	Light* m_Light;
 	Frustum* m_Frustum;
 	QuadTree* m_QuadTree;
+	PerlinNoise* m_PerlinNoise;
+
 };
 
 #endif

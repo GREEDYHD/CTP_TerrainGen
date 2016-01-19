@@ -16,14 +16,16 @@ QuadTree::~QuadTree()
 
 }
 
-bool QuadTree::Initialize(Terrain* terrain, ID3D11Device* device)
+bool QuadTree::Initialize(vector<Terrain*> terrain, ID3D11Device* device)
 {
-	int vertexCount;
+	int vertexCount = 0;
 	float centerX, centerZ, width;
 
-
 	// Get the number of vertices in the terrain vertex array.
-	vertexCount = terrain->GetVertexCount();
+	for (vector<Terrain*>::iterator it = terrain.begin(); it != terrain.end(); it++)
+	{
+		vertexCount += (*it)->GetVertexCount();
+	}
 
 	// Store the total triangle count for the vertex list.
 	m_triangleCount = vertexCount / 3;
@@ -36,8 +38,10 @@ bool QuadTree::Initialize(Terrain* terrain, ID3D11Device* device)
 	}
 
 	// Copy the terrain vertices into the vertex list.
-	terrain->CopyVertexArray((void*)m_vertexList);
-
+	for (vector<Terrain*>::iterator it = terrain.begin(); it != terrain.end(); it++)
+	{
+		(*it)->CopyVertexArray((void*)m_vertexList);
+	}
 	// Calculate the center x,z and the width of the mesh.
 	CalculateMeshDimensions(vertexCount, centerX, centerZ, width);
 

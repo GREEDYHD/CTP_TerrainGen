@@ -9,7 +9,6 @@ Terrain::Terrain()
 	m_Texture = 0;
 }
 
-
 Terrain::Terrain(const Terrain& other)
 {
 
@@ -20,12 +19,20 @@ Terrain::~Terrain()
 
 }
 
-bool Terrain::Initialize(ID3D11Device* device, char* heightMapFilename, WCHAR* textureFilename)
+bool Terrain::Initialize(ID3D11Device* device, PerlinNoise* perlinNoise, char* heightMapFilename, WCHAR* textureFilename, float x, float y, float z, int terrainWidth, int terrainHeight)
 {
 	bool result;
 
+	m_PerlinNoise = perlinNoise;
 
-	m_PerlinNoise = new PerlinNoise(200);
+	m_terrainWidth = terrainWidth;
+	m_terrainHeight = terrainHeight;
+
+	m_heightMap = new HeightMapType[m_terrainWidth * m_terrainHeight];
+
+	m_positionX = x + m_terrainWidth;
+	m_positionY = y;
+	m_positionZ = z + m_terrainHeight;
 
 	//Load in the height map for the terrain.
 	//result = LoadHeightMap(heightMapFilename);
@@ -37,7 +44,8 @@ bool Terrain::Initialize(ID3D11Device* device, char* heightMapFilename, WCHAR* t
 	// Normalize the height of the height map.
 
 	//ConstructGrid();
-	GenerateFractalTerrain(10, 10, 0.5f, 8);
+
+	GenerateFractalTerrain(200, 1, 0.5f, 8);
 	NormalizeHeightMap();
 
 	result = CalculateNormals();
@@ -104,7 +112,6 @@ bool Terrain::LoadHeightMap(char* filename)
 	int imageSize, i, j, k, index;
 	unsigned char* bitmapImage;
 	unsigned char height;
-
 
 	// Open the height map file in binary.
 	error = fopen_s(&filePtr, filename, "rb");
@@ -181,7 +188,7 @@ bool Terrain::LoadHeightMap(char* filename)
 			double noise = m_PerlinNoise->PerlinNoise2D(1, 1.0f, 1, i, j);
 
 			m_heightMap[index].x = (float)i;
-			m_heightMap[index].y = floor(255 * noise);
+			m_heightMap[index].y = (float)floor(255 * noise);
 			m_heightMap[index].z = (float)j;
 
 			k += 3;
@@ -211,11 +218,11 @@ void Terrain::ConstructGrid()
 		{
 			index = (m_terrainHeight * j) + i;
 
-			double noise = 20 * m_PerlinNoise->PerlinNoise2D(1, 1, 1, (double)i / (double)m_terrainWidth * 10, (double)j / (double)m_terrainHeight * 10);
+			double noise = 20.0 * m_PerlinNoise->PerlinNoise2D(1, 1, 1, (double)i / (double)m_terrainWidth * 10, (double)j / (double)m_terrainHeight * 10);
 
-			m_heightMap[index].x = (float)i;
-			m_heightMap[index].y = noise;
-			m_heightMap[index].z = (float)j;
+			m_heightMap[index].x = (float)i + m_positionX;
+			m_heightMap[index].y = (float)noise + m_positionY;
+			m_heightMap[index].z = (float)j + m_positionZ;
 
 			k += 3;
 		}
@@ -224,28 +231,24 @@ void Terrain::ConstructGrid()
 
 void Terrain::GenerateFractalTerrain(int seed, float noiseSize, float persistence, int octaves)
 {
-	m_terrainWidth = 256;
-	m_terrainHeight = 256;
-
-	m_heightMap = new HeightMapType[m_terrainWidth * m_terrainHeight];
-
-	for (int y = 0; y < m_terrainHeight; y++)
+	for (int z = 0; z < m_terrainHeight; z++)
 	{
 		for (int x = 0; x < m_terrainWidth; x++)
 		{
-			double xf = (x / (float)m_terrainWidth * noiseSize);
-			double yf = (y / (float)m_terrainHeight * noiseSize);
-
 			float total = 0.0f;
+
+			float newX = ((float)x / (float)m_terrainWidth * noiseSize) + (m_positionX / (float)m_terrainWidth * noiseSize);
+			float newZ = ((float)z / (float)m_terrainHeight * noiseSize) + (m_positionZ / (float)m_terrainWidth * noiseSize);
+
 			for (int i = 0; i < octaves; i++)
 			{
-				double f = 200 * m_PerlinNoise->PerlinNoise2D(seed, persistence, i, (float)xf, (float)yf);
+				double f = 500 * m_PerlinNoise->PerlinNoise2D(seed, persistence, i, newX, newZ);
 				total += (float)f;
 			}
 
-			m_heightMap[(y * m_terrainHeight) + x].x = (float)x;
-			m_heightMap[(y * m_terrainHeight) + x].y = (float)total;
-			m_heightMap[(y * m_terrainHeight) + x].z = (float)y;
+			m_heightMap[(z * m_terrainHeight) + x].x = (float)x + m_positionX;
+			m_heightMap[(z * m_terrainHeight) + x].y = (float)total + m_positionY;
+			m_heightMap[(z * m_terrainHeight) + x].z = (float)z + m_positionZ;
 		}
 	}
 }
@@ -253,7 +256,6 @@ void Terrain::GenerateFractalTerrain(int seed, float noiseSize, float persistenc
 void Terrain::NormalizeHeightMap()
 {
 	int i, j;
-
 
 	for (j = 0; j < m_terrainHeight; j++)
 	{
@@ -666,7 +668,6 @@ bool Terrain::InitializeBuffers(ID3D11Device* device)
 
 	return true;
 }
-
 
 void Terrain::ShutdownBuffers()
 {

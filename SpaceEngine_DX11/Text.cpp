@@ -29,7 +29,6 @@ bool Text::Initialize(ID3D11Device* device, ID3D11DeviceContext* deviceContext, 
 {
 	bool result;
 
-
 	// Store the screen width and height for calculating pixel location during the sentence updates.
 	m_screenWidth = screenWidth;
 	m_screenHeight = screenHeight;

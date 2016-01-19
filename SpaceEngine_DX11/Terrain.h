@@ -39,7 +39,7 @@ public:
 	Terrain(const Terrain&);
 	~Terrain();
 
-	bool Initialize(ID3D11Device*, char*, WCHAR*);
+	bool Initialize(ID3D11Device*, PerlinNoise*, char*, WCHAR*, float, float, float, int, int);
 	void Shutdown();
 	void Render(ID3D11DeviceContext*);
 
@@ -68,12 +68,13 @@ private:
 	int m_terrainWidth, m_terrainHeight;
 	int m_vertexCount, m_indexCount;
 
+	float m_positionX, m_positionY, m_positionZ;
+
 	ID3D11Buffer *m_vertexBuffer, *m_indexBuffer;
 	VertexType* m_vertices;
-
+	PerlinNoise* m_PerlinNoise;
 	HeightMapType* m_heightMap;
 	Texture* m_Texture;
-	PerlinNoise* m_PerlinNoise;
 };
 
 #endif

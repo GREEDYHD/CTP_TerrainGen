@@ -6,6 +6,7 @@ const int MAX_TRIANGLES = 10000;
 #include "Terrain.h"
 #include "Frustum.h"
 #include "ShaderTerrain.h"
+#include <vector>
 
 class QuadTree
 {
@@ -30,7 +31,7 @@ public:
 	QuadTree(const QuadTree&);
 	~QuadTree();
 
-	bool Initialize(Terrain*, ID3D11Device*);
+	bool Initialize(vector<Terrain*>, ID3D11Device*);
 	void Shutdown();
 	void Render(Frustum*, ID3D11DeviceContext*, ShaderTerrain*);
 

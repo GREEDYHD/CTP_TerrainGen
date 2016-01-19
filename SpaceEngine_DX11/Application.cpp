@@ -1,11 +1,12 @@
 #include "Application.h"
 
+using namespace std;
+
 Application::Application()
 {
 	m_Input = 0;
 	m_Direct3D = 0;
 	m_Camera = 0;
-	m_Terrain = 0;
 	m_ShaderColor = 0;
 	m_Timer = 0;
 	m_CameraController = 0;
@@ -16,9 +17,9 @@ Application::Application()
 	m_ShaderTerrain = 0;
 	m_Light = 0;
 	m_Frustum = 0;
-	m_QuadTree = 0;
+	//m_QuadTree = 0;
+	m_PerlinNoise = 0;
 }
-
 
 Application::Application(const Application& other)
 {
@@ -87,19 +88,37 @@ bool Application::Initialize(HINSTANCE hinstance, HWND hwnd, int screenWidth, in
 	cameraZ = -100.0f;
 
 	m_Camera->SetPosition(cameraX, cameraY, cameraZ);
-	// Create the terrain object.
-	m_Terrain = new Terrain;
-	if (!m_Terrain)
-	{
-		return false;
-	}
 
-	// Initialize the terrain object.
-	result = m_Terrain->Initialize(m_Direct3D->GetDevice(), "heightmap01.bmp", L"Red.dds");
-	if (!result)
+	m_PerlinNoise = new PerlinNoise();
+
+	int mapSize = 4;
+
+	for (int i = 0; i < pow(mapSize,2); i++)
 	{
-		MessageBox(hwnd, L"Could not initialize the terrain object.", L"Error", MB_OK);
-		return false;
+		m_Terrain.push_back(new Terrain());
+	}
+	
+	int w = 256, h = 256;
+
+	float p = 0, q = 0;
+	for (vector<Terrain*>::iterator it = m_Terrain.begin(); it != m_Terrain.end(); it++)
+	{
+		result = (*it)->Initialize(m_Direct3D->GetDevice(), m_PerlinNoise, "heightmap01.bmp", L"Red.dds", (p - 1) * (w - 1), 0, (q - 1) * (h - 1), w, h);
+
+		if (!result)
+		{
+			MessageBox(hwnd, L"Could not initialize the terrain object.", L"Error", MB_OK);
+			return false;
+		}
+		if (p == mapSize - 1)
+		{
+			q++;
+			p = 0;
+		}
+		else
+		{
+			p++;
+		}
 	}
 
 	// Create the color shader object.
@@ -237,32 +256,31 @@ bool Application::Initialize(HINSTANCE hinstance, HWND hwnd, int screenWidth, in
 	}
 
 	// Create the quad tree object.
-	m_QuadTree = new QuadTree;
-	if (!m_QuadTree)
-	{
-		return false;
-	}
+	//m_QuadTree = new QuadTree;
+	//if (!m_QuadTree)
+	//{
+	//	return false;
+	//}
 
 	// Initialize the quad tree object.
-	result = m_QuadTree->Initialize(m_Terrain, m_Direct3D->GetDevice());
-	if (!result)
-	{
-		MessageBox(hwnd, L"Could not initialize the quad tree object.", L"Error", MB_OK);
-		return false;
-	}
+	//result = m_QuadTree->Initialize(m_Terrain, m_Direct3D->GetDevice());
+	//if (!result)
+	//{
+	//	MessageBox(hwnd, L"Could not initialize the quad tree object.", L"Error", MB_OK);
+	//	return false;
+	//}
 
 	return true;
 }
 
-
 void Application::Shutdown()
 {
-	if (m_QuadTree)
-	{
-		m_QuadTree->Shutdown();
-		delete m_QuadTree;
-		m_QuadTree = 0;
-	}
+	//if (m_QuadTree)
+	//{
+	//	m_QuadTree->Shutdown();
+	//	delete m_QuadTree;
+	//	m_QuadTree = 0;
+	//}
 
 	// Release the frustum object.
 	if (m_Frustum)
@@ -339,12 +357,12 @@ void Application::Shutdown()
 	}
 
 	// Release the terrain object.
-	if (m_Terrain)
-	{
-		m_Terrain->Shutdown();
-		delete m_Terrain;
-		m_Terrain = 0;
-	}
+	//if (m_Terrain)
+	//{
+	//	m_Terrain->Shutdown();
+	//	delete m_Terrain;
+	//	m_Terrain = 0;
+	//}
 
 	// Release the camera object.
 	if (m_Camera)
@@ -372,11 +390,9 @@ void Application::Shutdown()
 	return;
 }
 
-
 bool Application::Frame()
 {
 	bool result;
-
 
 	// Read the user input.
 	result = m_Input->Frame();
@@ -427,12 +443,10 @@ bool Application::Frame()
 	return result;
 }
 
-
 bool Application::HandleInput(float frameTime)
 {
 	bool keyDown, result;
 	float posX, posY, posZ, rotX, rotY, rotZ;
-
 
 	// Set the frame time for calculating the updated position.
 	m_CameraController->SetFrameTime(frameTime);
@@ -493,12 +507,10 @@ bool Application::HandleInput(float frameTime)
 	return true;
 }
 
-
 bool Application::RenderGraphics()
 {
 	XMFLOAT4X4 worldMatrix, viewMatrix, projectionMatrix, orthoMatrix;
 	bool result;
-
 
 	// Clear the scene.
 	m_Direct3D->BeginScene(0.0f, 0.0f, 0.0f, 1.0f);
@@ -515,29 +527,35 @@ bool Application::RenderGraphics()
 	m_Frustum->ConstructFrustum(SCREEN_DEPTH, projectionMatrix, viewMatrix);
 
 	// Set the terrain shader parameters that it will use for rendering.
-	result = m_ShaderTerrain->SetShaderParameters(m_Direct3D->GetDeviceContext(), worldMatrix, viewMatrix, projectionMatrix, m_Light->GetAmbientColor(), m_Light->GetDiffuseColor(), m_Light->GetDirection(), m_Terrain->GetTexture());
-	if (!result)
+
+	for (vector<Terrain*>::iterator it = m_Terrain.begin(); it != m_Terrain.end(); it++)
 	{
-		return false;
+		result = m_ShaderTerrain->SetShaderParameters(m_Direct3D->GetDeviceContext(), worldMatrix, viewMatrix, projectionMatrix, m_Light->GetAmbientColor(), m_Light->GetDiffuseColor(), m_Light->GetDirection(), (*it)->GetTexture());
+		if (!result)
+		{
+			return false;
+		}
 	}
 
 	// Render the terrain using the quad tree and terrain shader.
-	m_QuadTree->Render(m_Frustum, m_Direct3D->GetDeviceContext(), m_ShaderTerrain);
+	//m_QuadTree->Render(m_Frustum, m_Direct3D->GetDeviceContext(), m_ShaderTerrain);
 
 	// Set the number of rendered terrain triangles since some were culled.
-	result = m_Text->SetRenderCount(m_QuadTree->GetDrawCount(), m_Direct3D->GetDeviceContext());
+	/*result = m_Text->SetRenderCount(m_QuadTree->GetDrawCount(), m_Direct3D->GetDeviceContext());
 	if (!result)
 	{
 		return false;
-	}
-
+	}*/
 
 	// Render the terrain buffers.
-	m_Terrain->Render(m_Direct3D->GetDeviceContext());
-
-	result = m_ShaderTerrain->Render(m_Direct3D->GetDeviceContext(), m_Terrain->GetIndexCount(), worldMatrix, viewMatrix, projectionMatrix,	m_Light->GetAmbientColor(), m_Light->GetDiffuseColor(), m_Light->GetDirection(), m_Terrain->GetTexture());	if (!result)
+	for (vector<Terrain*>::iterator it = m_Terrain.begin(); it != m_Terrain.end(); it++)
 	{
-		return false;
+		(*it)->Render(m_Direct3D->GetDeviceContext());
+
+		result = m_ShaderTerrain->Render(m_Direct3D->GetDeviceContext(), (*it)->GetIndexCount(), worldMatrix, viewMatrix, projectionMatrix, m_Light->GetAmbientColor(), m_Light->GetDiffuseColor(), m_Light->GetDirection(), (*it)->GetTexture());	if (!result)
+		{
+			return false;
+		}
 	}
 
 	// Turn off the Z buffer to begin all 2D rendering.
