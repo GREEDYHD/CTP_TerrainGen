@@ -1,6 +1,5 @@
 #include "CameraController.h"
 
-
 CameraController::CameraController()
 {
 	m_positionX = 0.0f;

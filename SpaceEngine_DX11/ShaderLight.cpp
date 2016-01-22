@@ -59,7 +59,6 @@ bool ShaderLight::Render(ID3D11DeviceContext* deviceContext, int indexCount, XMF
 	return true;
 }
 
-
 bool ShaderLight::InitializeShader(ID3D11Device* device, HWND hwnd, WCHAR* filename)
 {
 	HRESULT result;
@@ -318,7 +317,6 @@ bool ShaderLight::SetShaderParameters(ID3D11DeviceContext* deviceContext, XMFLOA
 	unsigned int bufferNumber;
 	MatrixBufferType* dataPtr;
 	LightBufferType* dataPtr2;
-
 
 	// Transpose the matrices to prepare them for the shader.
 	XMStoreFloat4x4(&worldMatrix, XMMatrixTranspose(XMLoadFloat4x4(&worldMatrix)));

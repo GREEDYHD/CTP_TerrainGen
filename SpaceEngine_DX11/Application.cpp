@@ -1,4 +1,5 @@
 #include "Application.h"
+#include "AntTweakBar.h"
 
 using namespace std;
 
@@ -38,7 +39,6 @@ bool Application::Initialize(HINSTANCE hinstance, HWND hwnd, int screenWidth, in
 	XMFLOAT4X4 baseViewMatrix;
 	char videoCard[128];
 	int videoMemory;
-
 
 	// Create the input object.  The input object will be used to handle reading the keyboard and mouse input from the user.
 	m_Input = new Input;
@@ -248,6 +248,8 @@ bool Application::Initialize(HINSTANCE hinstance, HWND hwnd, int screenWidth, in
 	m_Light->SetDiffuseColor(1.0f, 1.0f, 1.0f, 1.0f);
 	m_Light->SetDirection(0.0f, -1.0f, -0.5f);
 
+
+	m_Objects.push_back(m_Light);
 	// Create the frustum object.
 	m_Frustum = new Frustum;
 	if (!m_Frustum)
@@ -269,6 +271,32 @@ bool Application::Initialize(HINSTANCE hinstance, HWND hwnd, int screenWidth, in
 	//	MessageBox(hwnd, L"Could not initialize the quad tree object.", L"Error", MB_OK);
 	//	return false;
 	//}
+
+	// Initialize AntTweakBar
+	if (!TwInit(TW_DIRECT3D11, m_Direct3D->GetDevice()))
+	{
+		MessageBoxA(hwnd, TwGetLastError(), "AntTweakBar initialization failed", MB_OK | MB_ICONERROR);
+		return 0;
+	}
+
+	// Create a tweak bar
+	TwBar *bar = TwNewBar("TweakBar");
+	TwDefine(" GLOBAL help='Help Menu' "); // Message added to the help bar.
+	int barSize[2] = { 300, 200 };
+	int barPos[2] = { 1280 - barSize[1] - 110, 10 };
+	TwSetParam(bar, NULL, "size", TW_PARAM_INT32, 2, barSize);
+	TwSetParam(bar, NULL, "position", TW_PARAM_INT32, 2, barPos);
+	int width = 150; // pixels
+	TwSetParam(bar, NULL, "valueswidth", TW_PARAM_INT32, 1, &width);
+
+	//TwAddVarRW(bar, "Position", TW_TYPE_DIR3D, m_Terrain[0]->GetPosition(), "group=LIGHTING key=h");
+
+	TwAddVarRW(bar, "Direction", TW_TYPE_DIR3F, m_Light->GetDirection(), "group=LIGHTING key=h");
+	TwAddVarRW(bar, "AmbientColour", TW_TYPE_DIR3F, m_Light->GetAmbientColor(), "group=LIGHTING key=h");
+	TwAddVarRW(bar, "DiffuseColour", TW_TYPE_DIR3F, m_Light->GetDiffuseColor(), "group=LIGHTING key=h");
+
+
+
 
 	return true;
 }
@@ -412,6 +440,9 @@ bool Application::Frame()
 	m_Fps->Frame();
 	m_Cpu->Frame();
 
+
+
+
 	// Update the FPS value in the text object.
 	result = m_Text->SetFPS(m_Fps->GetFPS(), m_Direct3D->GetDeviceContext());
 	if (!result)
@@ -426,12 +457,16 @@ bool Application::Frame()
 		return false;
 	}
 
+
 	// Do the frame input processing.
 	result = HandleInput(m_Timer->GetTime());
 	if (!result)
 	{
 		return false;
 	}
+
+	result = Update();
+	if (!result) return false;
 
 	// Render the graphics.
 	result = RenderGraphics();
@@ -507,6 +542,15 @@ bool Application::HandleInput(float frameTime)
 	return true;
 }
 
+bool Application::Update()
+{
+	for (vector<Object*>::iterator it = m_Objects.begin(); it != m_Objects.end(); it++)
+	{
+		(*it)->Update();
+	}
+	return true;
+}
+
 bool Application::RenderGraphics()
 {
 	XMFLOAT4X4 worldMatrix, viewMatrix, projectionMatrix, orthoMatrix;
@@ -530,7 +574,7 @@ bool Application::RenderGraphics()
 
 	for (vector<Terrain*>::iterator it = m_Terrain.begin(); it != m_Terrain.end(); it++)
 	{
-		result = m_ShaderTerrain->SetShaderParameters(m_Direct3D->GetDeviceContext(), worldMatrix, viewMatrix, projectionMatrix, m_Light->GetAmbientColor(), m_Light->GetDiffuseColor(), m_Light->GetDirection(), (*it)->GetTexture());
+		result = m_ShaderTerrain->SetShaderParameters(m_Direct3D->GetDeviceContext(), worldMatrix, viewMatrix, projectionMatrix, *m_Light->GetAmbientColor(), *m_Light->GetDiffuseColor(), *m_Light->GetDirection(), (*it)->GetTexture());
 		if (!result)
 		{
 			return false;
@@ -552,11 +596,14 @@ bool Application::RenderGraphics()
 	{
 		(*it)->Render(m_Direct3D->GetDeviceContext());
 
-		result = m_ShaderTerrain->Render(m_Direct3D->GetDeviceContext(), (*it)->GetIndexCount(), worldMatrix, viewMatrix, projectionMatrix, m_Light->GetAmbientColor(), m_Light->GetDiffuseColor(), m_Light->GetDirection(), (*it)->GetTexture());	if (!result)
+		result = m_ShaderTerrain->Render(m_Direct3D->GetDeviceContext(), (*it)->GetIndexCount(), worldMatrix, viewMatrix, projectionMatrix, *m_Light->GetAmbientColor(), *m_Light->GetDiffuseColor(), *m_Light->GetDirection(), (*it)->GetTexture());
+		if (!result)
 		{
 			return false;
 		}
 	}
+
+	TwDraw();
 
 	// Turn off the Z buffer to begin all 2D rendering.
 	m_Direct3D->DisableZBuffer();

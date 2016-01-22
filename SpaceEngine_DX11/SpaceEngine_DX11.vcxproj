@@ -72,6 +72,7 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
+    <LibraryPath>D:\Documents\Projects\GitHub\CTP_TerrainGen\Libs;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
@@ -94,6 +95,8 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>D:\Documents\Projects\GitHub\CTP_TerrainGen\Libs;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>AntTweakBar.lib;AntTweakBar64.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -153,6 +156,7 @@
     <ClCompile Include="InfoCPU.cpp" />
     <ClCompile Include="InfoFPS.cpp" />
     <ClCompile Include="Font.cpp" />
+    <ClCompile Include="Object.cpp" />
     <ClCompile Include="PerlinNoise.cpp" />
     <ClCompile Include="QuadTree.cpp" />
     <ClCompile Include="ShaderColor.cpp" />
@@ -179,6 +183,7 @@
     <ClInclude Include="Frustum.h" />
     <ClInclude Include="InfoCPU.h" />
     <ClInclude Include="Font.h" />
+    <ClInclude Include="Object.h" />
     <ClInclude Include="PerlinNoise.h" />
     <ClInclude Include="QuadTree.h" />
     <ClInclude Include="ShaderColor.h" />

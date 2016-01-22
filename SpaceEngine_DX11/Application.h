@@ -21,6 +21,7 @@ const float SCREEN_NEAR = 0.1f;
 #include "Light.h"
 #include "Frustum.h"
 #include "QuadTree.h"
+#include "Object.h"
 
 #include <vector>
 
@@ -34,10 +35,12 @@ public:
 	bool Initialize(HINSTANCE, HWND, int, int);
 	void Shutdown();
 	bool Frame();
+	bool Update();
 
 private:
 	bool HandleInput(float);
 	bool RenderGraphics();
+	vector<Object*> m_Objects;
 
 private:
 	Input* m_Input;

@@ -2,10 +2,11 @@
 #define _LIGHT_H_
 
 #include <DirectXMath.h>
+#include "Object.h"
 
 using namespace DirectX;
 
-class Light
+class Light : public Object
 {
 public:
 	Light();
@@ -16,9 +17,9 @@ public:
 	void SetDiffuseColor(float, float, float, float);
 	void SetDirection(float, float, float);
 
-	XMFLOAT4 GetAmbientColor();
-	XMFLOAT4 GetDiffuseColor();
-	XMFLOAT3 GetDirection();
+	XMFLOAT4* GetAmbientColor();
+	XMFLOAT4* GetDiffuseColor();
+	XMFLOAT3* GetDirection();
 
 private:
 	XMFLOAT4 m_ambientColor;

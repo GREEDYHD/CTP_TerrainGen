@@ -12,8 +12,8 @@ Light::Light(const Light& other)
 
 Light::~Light()
 {
-}
 
+}
 
 void Light::SetAmbientColor(float red, float green, float blue, float alpha)
 {
@@ -21,13 +21,11 @@ void Light::SetAmbientColor(float red, float green, float blue, float alpha)
 	return;
 }
 
-
 void Light::SetDiffuseColor(float red, float green, float blue, float alpha)
 {
 	m_diffuseColor = XMFLOAT4(red, green, blue, alpha);
 	return;
 }
-
 
 void Light::SetDirection(float x, float y, float z)
 {
@@ -35,20 +33,17 @@ void Light::SetDirection(float x, float y, float z)
 	return;
 }
 
-
-XMFLOAT4 Light::GetAmbientColor()
+XMFLOAT4* Light::GetAmbientColor()
 {
-	return m_ambientColor;
+	return &m_ambientColor;
 }
 
-
-XMFLOAT4 Light::GetDiffuseColor()
+XMFLOAT4* Light::GetDiffuseColor()
 {
-	return m_diffuseColor;
+	return &m_diffuseColor;
 }
 
-
-XMFLOAT3 Light::GetDirection()
+XMFLOAT3* Light::GetDirection()
 {
-	return m_direction;
+	return &m_direction;
 }

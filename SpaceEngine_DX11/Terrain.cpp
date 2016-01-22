@@ -551,7 +551,7 @@ bool Terrain::InitializeBuffers(ID3D11Device* device)
 			index3 = (m_terrainHeight * (j + 1)) + i;      // Upper left.
 			index4 = (m_terrainHeight * (j + 1)) + (i + 1);  // Upper right.
 
-																// Upper left.
+															 // Upper left.
 			tv = m_heightMap[index3].tv;
 
 			// Modify the texture coordinates to cover the top edge.

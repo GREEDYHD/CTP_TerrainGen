@@ -1,4 +1,5 @@
 #include "System.h"
+#include "AntTweakBar.h"
 
 System::System()
 {
@@ -120,6 +121,8 @@ bool System::Frame()
 
 LRESULT CALLBACK System::MessageHandler(HWND hwnd, UINT umsg, WPARAM wparam, LPARAM lparam)
 {
+	if (TwEventWin(hwnd, umsg, wparam, lparam))
+		return 0; // Event has been handled by AntTweakBar
 	return DefWindowProc(hwnd, umsg, wparam, lparam);
 }
 
@@ -180,6 +183,7 @@ void System::InitializeWindows(int& screenWidth, int& screenHeight)
 	else
 	{
 		// If windowed then set it to 800x600 resolution.
+		//SCREEN RESOLUTION
 		screenWidth = 1280;
 		screenHeight = 720;
 
@@ -199,7 +203,7 @@ void System::InitializeWindows(int& screenWidth, int& screenHeight)
 	SetFocus(m_hwnd);
 
 	// Hide the mouse cursor.
-	ShowCursor(false);
+	ShowCursor(true);
 
 	return;
 }
