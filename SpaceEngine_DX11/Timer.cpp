@@ -37,12 +37,13 @@ void Timer::Frame()
 	INT64 currentTime;
 	float timeDifference;
 
-
-	QueryPerformanceCounter((LARGE_INTEGER*)& currentTime);
+	QueryPerformanceCounter((LARGE_INTEGER*)&currentTime);
 
 	timeDifference = (float)(currentTime - m_startTime);
 
 	m_frameTime = timeDifference / m_ticksPerMs;
+
+	m_deltaTime = timeDifference / 10000;
 
 	m_startTime = currentTime;
 
@@ -52,4 +53,9 @@ void Timer::Frame()
 float Timer::GetTime()
 {
 	return m_frameTime;
+}
+
+float Timer::GetDeltaTime()
+{
+	return m_deltaTime;
 }

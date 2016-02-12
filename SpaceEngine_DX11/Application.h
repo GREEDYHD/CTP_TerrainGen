@@ -1,9 +1,9 @@
 #ifndef _Application_H_
 #define _Application_H_
 
-const bool FULL_SCREEN = false;
-const bool VSYNC_ENABLED = false;
-const float SCREEN_DEPTH = 1000.0f;
+const bool FULL_SCREEN = true;
+const bool VSYNC_ENABLED = true;
+const float SCREEN_DEPTH = 3000.0f; //Change render distance
 const float SCREEN_NEAR = 0.1f;
 
 #include "Input.h"
@@ -22,6 +22,7 @@ const float SCREEN_NEAR = 0.1f;
 #include "Frustum.h"
 #include "QuadTree.h"
 #include "Object.h"
+#include "AntTweakBar.h"
 
 #include <vector>
 
@@ -57,9 +58,8 @@ private:
 	ShaderTerrain* m_ShaderTerrain;
 	Light* m_Light;
 	Frustum* m_Frustum;
-	QuadTree* m_QuadTree;
+	vector<QuadTree*> m_QuadTree;
 	PerlinNoise* m_PerlinNoise;
 
 };
-
 #endif

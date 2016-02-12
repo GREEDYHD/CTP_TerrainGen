@@ -14,6 +14,8 @@ Direct3D::Direct3D()
 
 	m_alphaEnableBlendingState = 0;
 	m_alphaDisableBlendingState = 0;
+
+	m_isWireframe = false;
 }
 
 Direct3D::Direct3D(const Direct3D& other)
@@ -326,8 +328,8 @@ bool Direct3D::Initialize(int screenWidth, int screenHeight, bool vsync, HWND hw
 	rasterDesc.DepthBias = 0;
 	rasterDesc.DepthBiasClamp = 0.0f;
 	rasterDesc.DepthClipEnable = true;
-	//rasterDesc.FillMode = D3D11_FILL_WIREFRAME;
-	rasterDesc.FillMode = D3D11_FILL_SOLID;
+	rasterDesc.FillMode = D3D11_FILL_WIREFRAME;
+	//rasterDesc.FillMode = D3D11_FILL_SOLID;
 	rasterDesc.FrontCounterClockwise = false;
 	rasterDesc.MultisampleEnable = false;
 	rasterDesc.ScissorEnable = false;
@@ -355,7 +357,7 @@ bool Direct3D::Initialize(int screenWidth, int screenHeight, bool vsync, HWND hw
 	m_deviceContext->RSSetViewports(1, &viewport);
 
 	// Setup the projection matrix.
-	fieldOfView = (float)XM_PI / 4.0f;
+	fieldOfView = (float)XM_PI /4 ;
 	screenAspect = (float)screenWidth / (float)screenHeight;
 
 	// Create the projection matrix for 3D rendering.
@@ -615,9 +617,37 @@ void Direct3D::EnableZBuffer()
 	return;
 }
 
-
 void Direct3D::DisableZBuffer()
 {
 	m_deviceContext->OMSetDepthStencilState(m_depthDisabledStencilState, 1);
 	return;
+}
+
+
+bool* Direct3D::GetWireframeValue()
+{
+	return &m_isWireframe;
+}
+
+void Direct3D::SetRenderState()
+{
+	D3D11_RASTERIZER_DESC rasterDesc;
+
+	rasterDesc.AntialiasedLineEnable = false;
+	rasterDesc.CullMode = D3D11_CULL_BACK;
+	rasterDesc.DepthBias = 0;
+	rasterDesc.DepthBiasClamp = 0.0f;
+	rasterDesc.DepthClipEnable = true;
+
+	m_deviceContext->RSSetState(m_rasterState);
+
+	rasterDesc.FillMode = m_isWireframe == 1 ? D3D11_FILL_WIREFRAME : rasterDesc.FillMode = D3D11_FILL_SOLID;
+
+	rasterDesc.FrontCounterClockwise = false;
+	rasterDesc.MultisampleEnable = false;
+	rasterDesc.ScissorEnable = false;
+	rasterDesc.SlopeScaledDepthBias = 0.0f;
+
+	// Create the rasterizer state from the description we just filled out.
+	m_device->CreateRasterizerState(&rasterDesc, &m_rasterState);
 }

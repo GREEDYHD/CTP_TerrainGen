@@ -7,6 +7,22 @@ Terrain::Terrain()
 	m_heightMap = 0;
 	m_vertices = 0;
 	m_Texture = 0;
+
+	mSeed = 100;
+	mTerrainHeight = 10;
+	mNoiseSize = 400;
+	mPersistence = 50.0f;
+	mOctaves = 8;
+
+	mPreviousSeed = mSeed;
+	mPreviousTerrainHeight = mTerrainHeight;
+	mPreviousNoiseSize = mNoiseSize;
+	mPreviousPersistence = mPersistence;
+	mPreviousOctaves = mOctaves;
+
+	m_frameTime = 0;
+
+	m_willUpdate = false;
 }
 
 Terrain::Terrain(const Terrain& other)
@@ -30,23 +46,16 @@ bool Terrain::Initialize(ID3D11Device* device, PerlinNoise* perlinNoise, char* h
 
 	m_heightMap = new HeightMapType[m_terrainWidth * m_terrainHeight];
 
-	m_positionX = x + m_terrainWidth;
-	m_positionY = y;
-	m_positionZ = z + m_terrainHeight;
+	mPosition.x = x + m_terrainWidth;
+	mPosition.y = y;
+	mPosition.z = z + m_terrainHeight;
 
-	//Load in the height map for the terrain.
-	//result = LoadHeightMap(heightMapFilename);
-	//if (!result)
-	//{
-	//	return false;
-	//}
+	mPreviousPosition.x = 100;
+	mPreviousPosition.y = 100;
+	mPreviousPosition.z = 100;
 
-	// Normalize the height of the height map.
-
-	//ConstructGrid();
-
-	GenerateFractalTerrain(200, 1, 0.5f, 8);
-	NormalizeHeightMap();
+	GenerateFractalTerrain();
+	//NormalizeHeightMap();
 
 	result = CalculateNormals();
 	if (!result)
@@ -87,6 +96,11 @@ void Terrain::Shutdown()
 void Terrain::Render(ID3D11DeviceContext* deviceContext)
 {
 	// Put the vertex and index buffers on the graphics pipeline to prepare them for drawing.
+	if (NeedsToUpdate())
+	{
+		UpdateBuffers(deviceContext);
+	}
+
 	RenderBuffers(deviceContext);
 
 	return;
@@ -185,7 +199,7 @@ bool Terrain::LoadHeightMap(char* filename)
 
 			index = (m_terrainHeight * j) + i;
 
-			double noise = m_PerlinNoise->PerlinNoise2D(1, 1.0f, 1, i, j);
+			float noise = m_PerlinNoise->PerlinNoise2D(1, 1.0f, 1, i, j);
 
 			m_heightMap[index].x = (float)i;
 			m_heightMap[index].y = (float)floor(255 * noise);
@@ -218,18 +232,18 @@ void Terrain::ConstructGrid()
 		{
 			index = (m_terrainHeight * j) + i;
 
-			double noise = 20.0 * m_PerlinNoise->PerlinNoise2D(1, 1, 1, (double)i / (double)m_terrainWidth * 10, (double)j / (double)m_terrainHeight * 10);
+			float noise = 20.0 * m_PerlinNoise->PerlinNoise2D(1, 1, 1, (double)i / (double)m_terrainWidth * 10, (double)j / (double)m_terrainHeight * 10);
 
-			m_heightMap[index].x = (float)i + m_positionX;
-			m_heightMap[index].y = (float)noise + m_positionY;
-			m_heightMap[index].z = (float)j + m_positionZ;
+			m_heightMap[index].x = (float)i + mPosition.x;
+			m_heightMap[index].y = (float)noise + mPosition.y;
+			m_heightMap[index].z = (float)j + mPosition.z;
 
 			k += 3;
 		}
 	}
 }
 
-void Terrain::GenerateFractalTerrain(int seed, float noiseSize, float persistence, int octaves)
+void Terrain::GenerateFractalTerrain()
 {
 	for (int z = 0; z < m_terrainHeight; z++)
 	{
@@ -237,18 +251,18 @@ void Terrain::GenerateFractalTerrain(int seed, float noiseSize, float persistenc
 		{
 			float total = 0.0f;
 
-			float newX = ((float)x / (float)m_terrainWidth * noiseSize) + (m_positionX / (float)m_terrainWidth * noiseSize);
-			float newZ = ((float)z / (float)m_terrainHeight * noiseSize) + (m_positionZ / (float)m_terrainWidth * noiseSize);
+			float newX = ((float)x / (float)m_terrainWidth * (mNoiseSize / 100)) + (mPosition.x / (float)m_terrainWidth * (mNoiseSize / 100));
+			float newZ = ((float)z / (float)m_terrainHeight * (mNoiseSize / 100)) + (mPosition.z / (float)m_terrainWidth * (mNoiseSize / 100));
 
-			for (int i = 0; i < octaves; i++)
+			for (int i = 0; i < mOctaves; i++)
 			{
-				double f = 500 * m_PerlinNoise->PerlinNoise2D(seed, persistence, i, newX, newZ);
+				double f = (mTerrainHeight) *  m_PerlinNoise->PerlinNoise2D(mSeed, mPersistence / 100, i, newX, newZ);
 				total += (float)f;
 			}
 
-			m_heightMap[(z * m_terrainHeight) + x].x = (float)x + m_positionX;
-			m_heightMap[(z * m_terrainHeight) + x].y = (float)total + m_positionY;
-			m_heightMap[(z * m_terrainHeight) + x].z = (float)z + m_positionZ;
+			m_heightMap[(z * m_terrainHeight) + x].x = (float)x + mPosition.x;
+			m_heightMap[(z * m_terrainHeight) + x].y = (float)(total + mPosition.y);
+			m_heightMap[(z * m_terrainHeight) + x].z = (float)z + mPosition.z;
 		}
 	}
 }
@@ -620,10 +634,10 @@ bool Terrain::InitializeBuffers(ID3D11Device* device)
 	}
 
 	// Set up the description of the static vertex buffer.
-	vertexBufferDesc.Usage = D3D11_USAGE_DEFAULT;
+	vertexBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
 	vertexBufferDesc.ByteWidth = sizeof(VertexType) * m_vertexCount;
 	vertexBufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-	vertexBufferDesc.CPUAccessFlags = 0;
+	vertexBufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 	vertexBufferDesc.MiscFlags = 0;
 	vertexBufferDesc.StructureByteStride = 0;
 
@@ -688,7 +702,7 @@ int Terrain::GetVertexCount()
 
 void Terrain::CopyVertexArray(void* vertexList)
 {
-	//	memcpy(vertexList, m_vertices, sizeof(VertexType) * m_vertexCount);
+	memcpy(vertexList, m_vertices, sizeof(VertexType) * m_vertexCount);
 	return;
 }
 
@@ -696,7 +710,6 @@ void Terrain::RenderBuffers(ID3D11DeviceContext* deviceContext)
 {
 	unsigned int stride;
 	unsigned int offset;
-
 
 	// Set vertex buffer stride and offset.
 	stride = sizeof(VertexType);
@@ -712,4 +725,155 @@ void Terrain::RenderBuffers(ID3D11DeviceContext* deviceContext)
 	deviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 	return;
+}
+
+void Terrain::SetFrameTime(float time)
+{
+	if (m_frameTime > 100)
+	{
+		m_frameTime = 0;
+	}
+	else
+	{
+		m_frameTime += time;
+	}
+
+	return;
+}
+
+bool Terrain::UpdateBuffers(ID3D11DeviceContext* deviceContext)
+{
+	VertexType* vertices;
+	D3D11_MAPPED_SUBRESOURCE mappedResource;
+	VertexType* verticesPtr;
+	HRESULT result;
+
+	int index;
+	int index1, index2, index3, index4;
+	float tu, tv;
+
+	// Create the vertex array.
+	vertices = new VertexType[m_vertexCount];
+	if (!vertices)
+	{
+		return false;
+	}
+
+	GenerateFractalTerrain();
+	CalculateNormals();
+
+	index = 0;
+	for (int j = 0; j < (m_terrainHeight - 1); j++)
+	{
+		for (int i = 0; i < (m_terrainWidth - 1); i++)
+		{
+			index1 = (m_terrainHeight * j) + i;
+			index2 = (m_terrainHeight * j) + (i + 1);
+			index3 = (m_terrainHeight * (j + 1)) + i;
+			index4 = (m_terrainHeight * (j + 1)) + (i + 1);
+
+
+			tv = m_heightMap[index3].tv;
+
+			// Modify the texture coordinates to cover the top edge.
+			if (tv == 1.0f) { tv = 0.0f; }
+
+			vertices[index].position = XMFLOAT3(m_heightMap[index3].x, m_heightMap[index3].y, m_heightMap[index3].z);
+			vertices[index].texture = XMFLOAT2(m_heightMap[index3].tu, tv);
+			vertices[index].normal = XMFLOAT3(m_heightMap[index3].nx, m_heightMap[index3].ny, m_heightMap[index3].nz);
+			index++;
+
+			// Upper right.
+			tu = m_heightMap[index4].tu;
+			tv = m_heightMap[index4].tv;
+
+			// Modify the texture coordinates to cover the top and right edge.
+			if (tu == 0.0f) { tu = 1.0f; }
+			if (tv == 1.0f) { tv = 0.0f; }
+
+			vertices[index].position = XMFLOAT3(m_heightMap[index4].x, m_heightMap[index4].y, m_heightMap[index4].z);
+			vertices[index].texture = XMFLOAT2(tu, tv);
+			vertices[index].normal = XMFLOAT3(m_heightMap[index4].nx, m_heightMap[index4].ny, m_heightMap[index4].nz);
+			index++;
+
+			// Bottom left.
+			vertices[index].position = XMFLOAT3(m_heightMap[index1].x, m_heightMap[index1].y, m_heightMap[index1].z);
+			vertices[index].texture = XMFLOAT2(m_heightMap[index1].tu, m_heightMap[index1].tv);
+			vertices[index].normal = XMFLOAT3(m_heightMap[index1].nx, m_heightMap[index1].ny, m_heightMap[index1].nz);
+			index++;
+
+			// Bottom left.
+			vertices[index].position = XMFLOAT3(m_heightMap[index1].x, m_heightMap[index1].y, m_heightMap[index1].z);
+			vertices[index].texture = XMFLOAT2(m_heightMap[index1].tu, m_heightMap[index1].tv);
+			vertices[index].normal = XMFLOAT3(m_heightMap[index1].nx, m_heightMap[index1].ny, m_heightMap[index1].nz);
+			index++;
+
+			// Upper right.
+			tu = m_heightMap[index4].tu;
+			tv = m_heightMap[index4].tv;
+
+			// Modify the texture coordinates to cover the top and right edge.
+			if (tu == 0.0f) { tu = 1.0f; }
+			if (tv == 1.0f) { tv = 0.0f; }
+
+			vertices[index].position = XMFLOAT3(m_heightMap[index4].x, m_heightMap[index4].y, m_heightMap[index4].z);
+			vertices[index].texture = XMFLOAT2(tu, tv);
+			vertices[index].normal = XMFLOAT3(m_heightMap[index4].nx, m_heightMap[index4].ny, m_heightMap[index4].nz);
+			index++;
+
+			// Bottom right.
+			tu = m_heightMap[index2].tu;
+
+			// Modify the texture coordinates to cover the right edge.
+			if (tu == 0.0f) { tu = 1.0f; }
+
+			vertices[index].position = XMFLOAT3(m_heightMap[index2].x, m_heightMap[index2].y, m_heightMap[index2].z);
+			vertices[index].texture = XMFLOAT2(tu, tv);
+			vertices[index].normal = XMFLOAT3(m_heightMap[index2].nx, m_heightMap[index2].ny, m_heightMap[index2].nz);
+			index++;
+		}
+	}
+
+	// Lock the vertex buffer so it can be written to.
+	result = deviceContext->Map(m_vertexBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+	if (FAILED(result))
+	{
+		return false;
+	}
+
+	// Get a pointer to the data in the vertex buffer.
+	verticesPtr = (VertexType*)mappedResource.pData;
+
+	// Copy the data into the vertex buffer.
+	memcpy(verticesPtr, (void*)vertices, (sizeof(VertexType) * m_vertexCount));
+
+	// Unlock the vertex buffer.
+	deviceContext->Unmap(m_vertexBuffer, 0);
+
+	// Release the vertex array as it is no longer needed.
+	delete[] vertices;
+	vertices = 0;
+
+
+	return true;
+}
+
+XMFLOAT3* Terrain::GetPosition()
+{
+	return &mPosition;
+}
+
+bool Terrain::NeedsToUpdate()
+{
+	if (mPreviousSeed != mSeed || mPreviousTerrainHeight != mTerrainHeight || mPreviousNoiseSize != mNoiseSize || mPersistence != mPreviousPersistence || mPreviousOctaves != mOctaves)
+	{
+		mPreviousSeed = mSeed;
+		mPreviousTerrainHeight = mTerrainHeight;
+		mPreviousNoiseSize = mNoiseSize;
+		mPreviousPersistence = mPersistence;
+		mPreviousOctaves = mOctaves;
+
+		return true;
+	}
+	return false;
 }

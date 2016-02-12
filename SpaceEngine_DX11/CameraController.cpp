@@ -83,7 +83,7 @@ void CameraController::MoveForward(bool keydown)
 
 		if (m_forwardSpeed > (m_frameTime * 0.03f))
 		{
-			m_forwardSpeed = m_frameTime * 0.03f;
+			m_forwardSpeed = m_frameTime * 0.1f;
 		}
 	}
 	else

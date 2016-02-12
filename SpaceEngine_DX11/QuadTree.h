@@ -31,7 +31,7 @@ public:
 	QuadTree(const QuadTree&);
 	~QuadTree();
 
-	bool Initialize(vector<Terrain*>, ID3D11Device*);
+	bool Initialize(Terrain*, ID3D11Device*);
 	void Shutdown();
 	void Render(Frustum*, ID3D11DeviceContext*, ShaderTerrain*);
 

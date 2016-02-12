@@ -2,7 +2,10 @@
 
 Frustum::Frustum()
 {
-
+	for (int i = 0; i < 6; i++)
+	{
+		m_planes[i] = XMFLOAT4(0, 0, 0, 0);
+	}
 }
 
 Frustum::Frustum(const Frustum& other)
@@ -20,7 +23,6 @@ void Frustum::ConstructFrustum(float screenDepth, XMFLOAT4X4 projectionMatrix, X
 	float zMinimum, r;
 	XMFLOAT4X4 matrix;
 
-
 	// Calculate the minimum Z distance in the frustum.
 	zMinimum = -projectionMatrix._43 / projectionMatrix._33;
 	r = screenDepth / (screenDepth - zMinimum);
@@ -28,7 +30,7 @@ void Frustum::ConstructFrustum(float screenDepth, XMFLOAT4X4 projectionMatrix, X
 	projectionMatrix._43 = -r * zMinimum;
 
 	// Create the frustum matrix from the view matrix and updated projection matrix.
-	XMLoadFloat4x4(&matrix) = XMMatrixMultiply(XMLoadFloat4x4(&viewMatrix), XMLoadFloat4x4(&projectionMatrix));
+	XMStoreFloat4x4(&matrix, XMMatrixMultiply(XMLoadFloat4x4(&viewMatrix), XMLoadFloat4x4(&projectionMatrix)));
 
 	// Calculate near plane of frustum.
 	m_planes[0].x = matrix._14 + matrix._13;
@@ -42,35 +44,35 @@ void Frustum::ConstructFrustum(float screenDepth, XMFLOAT4X4 projectionMatrix, X
 	m_planes[1].y = matrix._24 - matrix._23;
 	m_planes[1].z = matrix._34 - matrix._33;
 	m_planes[1].w = matrix._44 - matrix._43;
-	XMPlaneNormalize(XMLoadFloat4(&m_planes[1]));
+	XMPlaneNormalize(XMLoadFloat4(&m_planes[0]));
 
 	// Calculate left plane of frustum.
 	m_planes[2].x = matrix._14 + matrix._11;
 	m_planes[2].y = matrix._24 + matrix._21;
 	m_planes[2].z = matrix._34 + matrix._31;
 	m_planes[2].w = matrix._44 + matrix._41;
-	XMPlaneNormalize(XMLoadFloat4(&m_planes[2]));
+	XMPlaneNormalize(XMLoadFloat4(&m_planes[0]));
 
 	// Calculate right plane of frustum.
 	m_planes[3].x = matrix._14 - matrix._11;
 	m_planes[3].y = matrix._24 - matrix._21;
 	m_planes[3].z = matrix._34 - matrix._31;
 	m_planes[3].w = matrix._44 - matrix._41;
-	XMPlaneNormalize(XMLoadFloat4(&m_planes[3]));
+	XMPlaneNormalize(XMLoadFloat4(&m_planes[0]));
 
 	// Calculate top plane of frustum.
 	m_planes[4].x = matrix._14 - matrix._12;
 	m_planes[4].y = matrix._24 - matrix._22;
 	m_planes[4].z = matrix._34 - matrix._32;
 	m_planes[4].w = matrix._44 - matrix._42;
-	XMPlaneNormalize(XMLoadFloat4(&m_planes[4]));
+	XMPlaneNormalize(XMLoadFloat4(&m_planes[0]));
 
 	// Calculate bottom plane of frustum.
 	m_planes[5].x = matrix._14 + matrix._12;
 	m_planes[5].y = matrix._24 + matrix._22;
 	m_planes[5].z = matrix._34 + matrix._32;
 	m_planes[5].w = matrix._44 + matrix._42;
-	XMPlaneNormalize(XMLoadFloat4(&m_planes[5]));
+	XMPlaneNormalize(XMLoadFloat4(&m_planes[0]));
 
 	return;
 }

@@ -16,16 +16,13 @@ QuadTree::~QuadTree()
 
 }
 
-bool QuadTree::Initialize(vector<Terrain*> terrain, ID3D11Device* device)
+bool QuadTree::Initialize(Terrain* terrain, ID3D11Device* device)
 {
-	int vertexCount = 0;
+	int vertexCount;
 	float centerX, centerZ, width;
 
 	// Get the number of vertices in the terrain vertex array.
-	for (vector<Terrain*>::iterator it = terrain.begin(); it != terrain.end(); it++)
-	{
-		vertexCount += (*it)->GetVertexCount();
-	}
+	vertexCount = terrain->GetVertexCount();
 
 	// Store the total triangle count for the vertex list.
 	m_triangleCount = vertexCount / 3;
@@ -38,10 +35,8 @@ bool QuadTree::Initialize(vector<Terrain*> terrain, ID3D11Device* device)
 	}
 
 	// Copy the terrain vertices into the vertex list.
-	for (vector<Terrain*>::iterator it = terrain.begin(); it != terrain.end(); it++)
-	{
-		(*it)->CopyVertexArray((void*)m_vertexList);
-	}
+	terrain->CopyVertexArray((void*)m_vertexList);
+
 	// Calculate the center x,z and the width of the mesh.
 	CalculateMeshDimensions(vertexCount, centerX, centerZ, width);
 
@@ -65,8 +60,10 @@ bool QuadTree::Initialize(vector<Terrain*> terrain, ID3D11Device* device)
 	return true;
 }
 
+
 void QuadTree::Shutdown()
 {
+
 	// Recursively release the quad tree data.
 	if (m_parentNode)
 	{
@@ -105,7 +102,7 @@ void QuadTree::CalculateMeshDimensions(int vertexCount, float& centerX, float& c
 	centerZ = 0.0f;
 
 	// Sum all the vertices in the mesh.
-	for (i = 0; i<vertexCount; i++)
+	for (i = 0; i < vertexCount; i++)
 	{
 		centerX += m_vertexList[i].position.x;
 		centerZ += m_vertexList[i].position.z;
@@ -123,7 +120,7 @@ void QuadTree::CalculateMeshDimensions(int vertexCount, float& centerX, float& c
 	minDepth = fabsf(m_vertexList[0].position.z - centerZ);
 
 	// Go through all the vertices and find the maximum and minimum width and depth of the mesh.
-	for (i = 0; i<vertexCount; i++)
+	for (i = 0; i < vertexCount; i++)
 	{
 		width = fabsf(m_vertexList[i].position.x - centerX);
 		depth = fabsf(m_vertexList[i].position.z - centerZ);
@@ -153,7 +150,6 @@ void QuadTree::CreateTreeNode(NodeType* node, float positionX, float positionZ, 
 	bool result;
 	D3D11_BUFFER_DESC vertexBufferDesc, indexBufferDesc;
 	D3D11_SUBRESOURCE_DATA vertexData, indexData;
-
 
 	// Store the node position and size.
 	node->positionX = positionX;
@@ -185,7 +181,7 @@ void QuadTree::CreateTreeNode(NodeType* node, float positionX, float positionZ, 
 	// Case 2: If there are too many triangles in this node then split it into four equal sized smaller tree nodes.
 	if (numTriangles > MAX_TRIANGLES)
 	{
-		for (i = 0; i<4; i++)
+		for (i = 0; i < 4; i++)
 		{
 			// Calculate the position offsets for the new child node.
 			offsetX = (((i % 2) < 1) ? -1.0f : 1.0f) * (width / 4.0f);
@@ -223,7 +219,7 @@ void QuadTree::CreateTreeNode(NodeType* node, float positionX, float positionZ, 
 	index = 0;
 
 	// Go through all the triangles in the vertex list.
-	for (i = 0; i<m_triangleCount; i++)
+	for (i = 0; i < m_triangleCount; i++)
 	{
 		// If the triangle is inside this node then add it to the vertex array.
 		result = IsTriangleContained(i, positionX, positionZ, width);
@@ -256,10 +252,10 @@ void QuadTree::CreateTreeNode(NodeType* node, float positionX, float positionZ, 
 	}
 
 	// Set up the description of the vertex buffer.
-	vertexBufferDesc.Usage = D3D11_USAGE_DEFAULT;
+	vertexBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
 	vertexBufferDesc.ByteWidth = sizeof(VertexType) * vertexCount;
 	vertexBufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-	vertexBufferDesc.CPUAccessFlags = 0;
+	vertexBufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 	vertexBufferDesc.MiscFlags = 0;
 	vertexBufferDesc.StructureByteStride = 0;
 
@@ -307,7 +303,7 @@ int QuadTree::CountTriangles(float positionX, float positionZ, float width)
 	count = 0;
 
 	// Go through all the triangles in the entire mesh and check which ones should be inside this node.
-	for (i = 0; i<m_triangleCount; i++)
+	for (i = 0; i < m_triangleCount; i++)
 	{
 		// If the triangle is inside the node then increment the count by one.
 		result = IsTriangleContained(i, positionX, positionZ, width);
@@ -362,7 +358,7 @@ bool QuadTree::IsTriangleContained(int index, float positionX, float positionZ, 
 
 	// Check to see if the minimum of the z coordinates of the triangle is inside the node.
 	minimumZ = min(z1, min(z2, z3));
-	if (minimumZ >(positionZ + radius))
+	if (minimumZ > (positionZ + radius))
 	{
 		return false;
 	}
@@ -383,7 +379,7 @@ void QuadTree::ReleaseNode(NodeType* node)
 
 
 	// Recursively go down the tree and release the bottom nodes first.
-	for (i = 0; i<4; i++)
+	for (i = 0; i < 4; i++)
 	{
 		if (node->nodes[i] != 0)
 		{
@@ -406,7 +402,7 @@ void QuadTree::ReleaseNode(NodeType* node)
 	}
 
 	// Release the four child nodes.
-	for (i = 0; i<4; i++)
+	for (i = 0; i < 4; i++)
 	{
 		if (node->nodes[i])
 		{
@@ -424,7 +420,6 @@ void QuadTree::RenderNode(NodeType* node, Frustum* frustum, ID3D11DeviceContext*
 	int count, i, indexCount;
 	unsigned int stride, offset;
 
-
 	// Check to see if the node can be viewed, height doesn't matter in a quad tree.
 	result = frustum->CheckCube(node->positionX, 0.0f, node->positionZ, (node->width / 2.0f));
 
@@ -436,7 +431,7 @@ void QuadTree::RenderNode(NodeType* node, Frustum* frustum, ID3D11DeviceContext*
 
 	// If it can be seen then check all four child nodes to see if they can also be seen.
 	count = 0;
-	for (i = 0; i<4; i++)
+	for (i = 0; i < 4; i++)
 	{
 		if (node->nodes[i] != 0)
 		{

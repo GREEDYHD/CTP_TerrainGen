@@ -9,7 +9,6 @@
 using namespace std;
 using namespace DirectX;
 
-
 class ShaderLight
 {
 private:

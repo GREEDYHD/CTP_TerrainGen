@@ -40,8 +40,12 @@ public:
 	void TurnOnAlphaBlending();
 	void TurnOffAlphaBlending();
 
+	bool* GetWireframeValue();
+	void SetRenderState();
+
 private:
 	bool m_vsync_enabled;
+	bool m_isWireframe;
 	int m_videoCardMemory;
 	char m_videoCardDescription[128];
 	IDXGISwapChain* m_swapChain;

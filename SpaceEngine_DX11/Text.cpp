@@ -186,7 +186,7 @@ bool Text::Render(ID3D11DeviceContext* deviceContext, ShaderFont* FontShader, XM
 	}
 
 
-	/*result = RenderSentence(m_sentence5, deviceContext, FontShader, worldMatrix, orthoMatrix);
+	result = RenderSentence(m_sentence5, deviceContext, FontShader, worldMatrix, orthoMatrix);
 	if (!result)
 	{
 		return false;
@@ -204,7 +204,7 @@ bool Text::Render(ID3D11DeviceContext* deviceContext, ShaderFont* FontShader, XM
 		return false;
 	}
 
-	result = RenderSentence(m_sentence8, deviceContext, FontShader, worldMatrix, orthoMatrix);
+	/*result = RenderSentence(m_sentence8, deviceContext, FontShader, worldMatrix, orthoMatrix);
 	if (!result)
 	{
 		return false;
