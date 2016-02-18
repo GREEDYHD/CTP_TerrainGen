@@ -246,8 +246,7 @@ void ShaderColor::OutputShaderErrorMessage(ID3D10Blob* errorMessage, HWND hwnd, 
 	return;
 }
 
-bool ShaderColor::SetShaderParameters(ID3D11DeviceContext* deviceContext, XMFLOAT4X4 worldMatrix,
-	XMFLOAT4X4 viewMatrix, XMFLOAT4X4 projectionMatrix)
+bool ShaderColor::SetShaderParameters(ID3D11DeviceContext* deviceContext, XMFLOAT4X4 worldMatrix, XMFLOAT4X4 viewMatrix, XMFLOAT4X4 projectionMatrix)
 {
 	HRESULT result;
 	D3D11_MAPPED_SUBRESOURCE mappedResource;

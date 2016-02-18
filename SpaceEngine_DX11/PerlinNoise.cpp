@@ -116,8 +116,8 @@ double PerlinNoise::PerlinNoise2D(int seed, float persistence, int octave, float
 {
 	float freq = (float)pow(2.0f, octave);
 	float amp = (float)pow(persistence, octave);
-	float tx = x * freq;
-	float ty = y * freq;
+	float tx = (x + 1000) * freq;
+	float ty = (y + 1000) * freq;
 	float txi = (int)tx;
 	float tyi = (int)ty;
 	float fracX = tx - txi;

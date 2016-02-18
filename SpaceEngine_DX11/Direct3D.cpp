@@ -28,11 +28,11 @@ Direct3D::~Direct3D()
 
 }
 
-void* Direct3D::operator new(unsigned int memorySize)
+void* Direct3D::operator new(size_t memorySize)
 {
 	unsigned int alignment;
 	void* memoryBlockPtr;
-	
+
 	// Set the alignment of the Direct3D to 16 byte to support high speed XMFLOAT4X4 calculations and prevent crashes.
 	alignment = 16;
 
@@ -56,7 +56,8 @@ bool Direct3D::Initialize(int screenWidth, int screenHeight, bool vsync, HWND hw
 	IDXGIFactory* factory;
 	IDXGIAdapter* adapter;
 	IDXGIOutput* adapterOutput;
-	unsigned int numModes, i, numerator, denominator, stringLength;
+	unsigned int numModes, i, numerator, denominator;
+	size_t stringLength;
 	DXGI_MODE_DESC* displayModeList;
 	DXGI_ADAPTER_DESC adapterDesc;
 	int error;
@@ -119,7 +120,7 @@ bool Direct3D::Initialize(int screenWidth, int screenHeight, bool vsync, HWND hw
 
 	// Now go through all the display modes and find the one that matches the screen width and height.
 	// When a match is found store the numerator and denominator of the refresh rate for that monitor.
-	for (i = 0; i<numModes; i++)
+	for (i = 0; i < numModes; i++)
 	{
 		if (displayModeList[i].Width == (unsigned int)screenWidth)
 		{
@@ -357,13 +358,13 @@ bool Direct3D::Initialize(int screenWidth, int screenHeight, bool vsync, HWND hw
 	m_deviceContext->RSSetViewports(1, &viewport);
 
 	// Setup the projection matrix.
-	fieldOfView = (float)XM_PI /4 ;
+	fieldOfView = (float)XM_PI / 4;
 	screenAspect = (float)screenWidth / (float)screenHeight;
 
 	// Create the projection matrix for 3D rendering.
 	XMStoreFloat4x4(&m_projectionMatrix, DirectX::XMMatrixPerspectiveFovLH(fieldOfView, screenAspect, screenNear, screenDepth));
 	// Initialize the world matrix to the identity matrix.
-	
+
 	XMStoreFloat4x4(&m_worldMatrix, DirectX::XMMatrixIdentity());
 
 	// Create an orthographic projection matrix for 2D rendering.

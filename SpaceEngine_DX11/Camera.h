@@ -11,7 +11,7 @@ public:
 	Camera(const Camera&);
 	~Camera();
 
-	void* operator new(unsigned int);
+	void* operator new(size_t);
 	void  operator delete(void*);
 
 	void SetPosition(float, float, float);

@@ -16,7 +16,7 @@ public:
 	Direct3D(const Direct3D&);
 	~Direct3D();
 
-	void* operator new(unsigned int);
+	void* operator new(size_t);
 	void operator delete(void*);
 
 	bool Initialize(int, int, bool, HWND, bool, float, float);

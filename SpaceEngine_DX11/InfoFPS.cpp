@@ -36,7 +36,7 @@ void InfoFPS::Frame()
 	}
 }
 
-int InfoFPS::GetFPS()
+int* InfoFPS::GetFPS()
 {
-	return m_FPS;
+	return &m_FPS;
 }

@@ -11,18 +11,9 @@ Terrain::Terrain()
 	mSeed = 100;
 	mTerrainHeight = 10;
 	mNoiseSize = 400;
-	mPersistence = 50.0f;
+	mPersistence = 0.5f;
 	mOctaves = 8;
-
-	mPreviousSeed = mSeed;
-	mPreviousTerrainHeight = mTerrainHeight;
-	mPreviousNoiseSize = mNoiseSize;
-	mPreviousPersistence = mPersistence;
-	mPreviousOctaves = mOctaves;
-
-	m_frameTime = 0;
-
-	m_willUpdate = false;
+	mPosition = XMFLOAT3(0, 0, 0);
 }
 
 Terrain::Terrain(const Terrain& other)
@@ -35,24 +26,22 @@ Terrain::~Terrain()
 
 }
 
-bool Terrain::Initialize(ID3D11Device* device, PerlinNoise* perlinNoise, char* heightMapFilename, WCHAR* textureFilename, float x, float y, float z, int terrainWidth, int terrainHeight)
+bool Terrain::Initialize(ID3D11Device* device, PerlinNoise* perlinNoise, WCHAR* textureFilename, XMFLOAT3 pos, int size, int maxOctaves)
 {
 	bool result;
 
 	m_PerlinNoise = perlinNoise;
 
-	m_terrainWidth = terrainWidth;
-	m_terrainHeight = terrainHeight;
+	mTerrainSize = size + 1;
 
-	m_heightMap = new HeightMapType[m_terrainWidth * m_terrainHeight];
+	m_heightMap = new HeightMapType[mTerrainSize * mTerrainSize];
 
-	mPosition.x = x + m_terrainWidth;
-	mPosition.y = y;
-	mPosition.z = z + m_terrainHeight;
+	mNoiseSize = size;
+	mOctaves = maxOctaves;
 
-	mPreviousPosition.x = 100;
-	mPreviousPosition.y = 100;
-	mPreviousPosition.z = 100;
+	mPosition.x = pos.x;
+	mPosition.y = pos.y;
+	mPosition.z = pos.z;
 
 	GenerateFractalTerrain();
 	//NormalizeHeightMap();
@@ -63,7 +52,7 @@ bool Terrain::Initialize(ID3D11Device* device, PerlinNoise* perlinNoise, char* h
 		return false;
 	}
 
-	CalculateTextureCoordinates();
+	//CalculateTextureCoordinates();
 
 	// Load the texture.
 	result = LoadTexture(device, textureFilename);
@@ -78,6 +67,8 @@ bool Terrain::Initialize(ID3D11Device* device, PerlinNoise* perlinNoise, char* h
 	{
 		return false;
 	}
+
+	ShutdownHeightMap();
 
 	return true;
 }
@@ -96,9 +87,9 @@ void Terrain::Shutdown()
 void Terrain::Render(ID3D11DeviceContext* deviceContext)
 {
 	// Put the vertex and index buffers on the graphics pipeline to prepare them for drawing.
-	if (NeedsToUpdate())
+	//if (NeedsToUpdate())
 	{
-		UpdateBuffers(deviceContext);
+		//	UpdateBuffers(deviceContext);
 	}
 
 	RenderBuffers(deviceContext);
@@ -116,153 +107,29 @@ ID3D11ShaderResourceView* Terrain::GetTexture()
 	return m_Texture->GetTexture();
 }
 
-bool Terrain::LoadHeightMap(char* filename)
-{
-	FILE* filePtr;
-	int error;
-	unsigned int count;
-	BITMAPFILEHEADER bitmapFileHeader;
-	BITMAPINFOHEADER bitmapInfoHeader;
-	int imageSize, i, j, k, index;
-	unsigned char* bitmapImage;
-	unsigned char height;
-
-	// Open the height map file in binary.
-	error = fopen_s(&filePtr, filename, "rb");
-	if (error != 0)
-	{
-		return false;
-	}
-
-	// Read in the file header.
-	count = fread(&bitmapFileHeader, sizeof(BITMAPFILEHEADER), 1, filePtr);
-	if (count != 1)
-	{
-		return false;
-	}
-
-	// Read in the bitmap info header.
-	count = fread(&bitmapInfoHeader, sizeof(BITMAPINFOHEADER), 1, filePtr);
-	if (count != 1)
-	{
-		return false;
-	}
-
-	// Save the dimensions of the terrain.
-	m_terrainWidth = bitmapInfoHeader.biWidth;
-	m_terrainHeight = bitmapInfoHeader.biHeight;
-
-	// Calculate the size of the bitmap image data.
-	imageSize = m_terrainWidth * m_terrainHeight * 3;
-
-	// Allocate memory for the bitmap image data.
-	bitmapImage = new unsigned char[imageSize];
-	if (!bitmapImage)
-	{
-		return false;
-	}
-
-	// Move to the beginning of the bitmap data.
-	fseek(filePtr, bitmapFileHeader.bfOffBits, SEEK_SET);
-
-	// Read in the bitmap image data.
-	count = fread(bitmapImage, 1, imageSize, filePtr);
-	if (count != imageSize)
-	{
-		return false;
-	}
-
-	// Close the file.
-	error = fclose(filePtr);
-	if (error != 0)
-	{
-		return false;
-	}
-
-	// Create the structure to hold the height map data.
-	m_heightMap = new HeightMapType[m_terrainWidth * m_terrainHeight];
-	if (!m_heightMap)
-	{
-		return false;
-	}
-
-	// Initialize the position in the image data buffer.
-	k = 0;
-	int frequency = 10;
-	int amplitude = 10;
-	// Read the image data into the height map.
-	for (j = 0; j < m_terrainHeight; j++)
-	{
-		for (i = 0; i < m_terrainWidth; i++)
-		{
-			height = bitmapImage[k];
-
-			index = (m_terrainHeight * j) + i;
-
-			float noise = m_PerlinNoise->PerlinNoise2D(1, 1.0f, 1, i, j);
-
-			m_heightMap[index].x = (float)i;
-			m_heightMap[index].y = (float)floor(255 * noise);
-			m_heightMap[index].z = (float)j;
-
-			k += 3;
-		}
-	}
-
-	// Release the bitmap image data.
-	delete[] bitmapImage;
-	bitmapImage = 0;
-
-	return true;
-}
-
-void Terrain::ConstructGrid()
-{
-	int i, j, k = 0;
-
-	m_terrainWidth = 500;
-	m_terrainHeight = 500;
-
-	m_heightMap = new HeightMapType[m_terrainWidth * m_terrainHeight];
-
-	int index;
-	for (j = 0; j < m_terrainHeight; j++)
-	{
-		for (i = 0; i < m_terrainWidth; i++)
-		{
-			index = (m_terrainHeight * j) + i;
-
-			float noise = 20.0 * m_PerlinNoise->PerlinNoise2D(1, 1, 1, (double)i / (double)m_terrainWidth * 10, (double)j / (double)m_terrainHeight * 10);
-
-			m_heightMap[index].x = (float)i + mPosition.x;
-			m_heightMap[index].y = (float)noise + mPosition.y;
-			m_heightMap[index].z = (float)j + mPosition.z;
-
-			k += 3;
-		}
-	}
-}
-
 void Terrain::GenerateFractalTerrain()
 {
-	for (int z = 0; z < m_terrainHeight; z++)
+	//int newSize = mNoiseSize / 2;
+	float trueSize = (512 / (float)pow(2, mOctaves)) / (mTerrainSize - 1);
+
+	for (int z = 0; z < mTerrainSize; z++)
 	{
-		for (int x = 0; x < m_terrainWidth; x++)
+		for (int x = 0; x < mTerrainSize; x++)
 		{
 			float total = 0.0f;
 
-			float newX = ((float)x / (float)m_terrainWidth * (mNoiseSize / 100)) + (mPosition.x / (float)m_terrainWidth * (mNoiseSize / 100));
-			float newZ = ((float)z / (float)m_terrainHeight * (mNoiseSize / 100)) + (mPosition.z / (float)m_terrainWidth * (mNoiseSize / 100));
+			float newX = ((mPosition.x) + (float)((x - (mTerrainSize / 2)) * trueSize));
+			float newZ = ((mPosition.z) + (float)((z - (mTerrainSize / 2)) * trueSize));
 
 			for (int i = 0; i < mOctaves; i++)
 			{
-				double f = (mTerrainHeight) *  m_PerlinNoise->PerlinNoise2D(mSeed, mPersistence / 100, i, newX, newZ);
+				double f = (mTerrainHeight) *  m_PerlinNoise->PerlinNoise2D(mSeed, mPersistence, i, newX, newZ);
 				total += (float)f;
 			}
 
-			m_heightMap[(z * m_terrainHeight) + x].x = (float)x + mPosition.x;
-			m_heightMap[(z * m_terrainHeight) + x].y = (float)(total + mPosition.y);
-			m_heightMap[(z * m_terrainHeight) + x].z = (float)z + mPosition.z;
+			m_heightMap[(z * mTerrainSize) + x].x = (float)(mPosition.x) + (float)((x - (mTerrainSize / 2)) * trueSize);
+			m_heightMap[(z * mTerrainSize) + x].y = (float)(mPosition.y + total);
+			m_heightMap[(z * mTerrainSize) + x].z = (float)(mPosition.z) + (float)((z - (mTerrainSize / 2)) * trueSize);
 		}
 	}
 }
@@ -271,11 +138,11 @@ void Terrain::NormalizeHeightMap()
 {
 	int i, j;
 
-	for (j = 0; j < m_terrainHeight; j++)
+	for (j = 0; j < mTerrainSize; j++)
 	{
-		for (i = 0; i < m_terrainWidth; i++)
+		for (i = 0; i < mTerrainSize; i++)
 		{
-			m_heightMap[(m_terrainHeight * j) + i].y /= 15.0f;
+			m_heightMap[(mTerrainSize * j) + i].y /= 15.0f;
 		}
 	}
 
@@ -290,20 +157,20 @@ bool Terrain::CalculateNormals()
 
 
 	// Create a temporary array to hold the un-normalized normal vectors.
-	normals = new VectorType[(m_terrainHeight - 1) * (m_terrainWidth - 1)];
+	normals = new VectorType[(mTerrainSize - 1) * (mTerrainSize - 1)];
 	if (!normals)
 	{
 		return false;
 	}
 
 	// Go through all the faces in the mesh and calculate their normals.
-	for (j = 0; j < (m_terrainHeight - 1); j++)
+	for (j = 0; j < (mTerrainSize - 1); j++)
 	{
-		for (i = 0; i < (m_terrainWidth - 1); i++)
+		for (i = 0; i < (mTerrainSize - 1); i++)
 		{
-			index1 = (j * m_terrainHeight) + i;
-			index2 = (j * m_terrainHeight) + (i + 1);
-			index3 = ((j + 1) * m_terrainHeight) + i;
+			index1 = (j * mTerrainSize) + i;
+			index2 = (j * mTerrainSize) + (i + 1);
+			index3 = ((j + 1) * mTerrainSize) + i;
 
 			// Get three vertices from the face.
 			vertex1[0] = m_heightMap[index1].x;
@@ -326,7 +193,7 @@ bool Terrain::CalculateNormals()
 			vector2[1] = vertex3[1] - vertex2[1];
 			vector2[2] = vertex3[2] - vertex2[2];
 
-			index = (j * (m_terrainHeight - 1)) + i;
+			index = (j * (mTerrainSize - 1)) + i;
 
 			// Calculate the cross product of those two vectors to get the un-normalized value for this face normal.
 			normals[index].x = (vector1[1] * vector2[2]) - (vector1[2] * vector2[1]);
@@ -337,9 +204,9 @@ bool Terrain::CalculateNormals()
 
 	// Now go through all the vertices and take an average of each face normal 	
 	// that the vertex touches to get the averaged normal for that vertex.
-	for (j = 0; j < m_terrainHeight; j++)
+	for (j = 0; j < mTerrainSize; j++)
 	{
-		for (i = 0; i < m_terrainWidth; i++)
+		for (i = 0; i < mTerrainSize; i++)
 		{
 			// Initialize the sum.
 			sum[0] = 0.0f;
@@ -352,7 +219,7 @@ bool Terrain::CalculateNormals()
 			// Bottom left face.
 			if (((i - 1) >= 0) && ((j - 1) >= 0))
 			{
-				index = ((j - 1) * (m_terrainHeight - 1)) + (i - 1);
+				index = ((j - 1) * (mTerrainSize - 1)) + (i - 1);
 
 				sum[0] += normals[index].x;
 				sum[1] += normals[index].y;
@@ -361,9 +228,9 @@ bool Terrain::CalculateNormals()
 			}
 
 			// Bottom right face.
-			if ((i < (m_terrainWidth - 1)) && ((j - 1) >= 0))
+			if ((i < (mTerrainSize - 1)) && ((j - 1) >= 0))
 			{
-				index = ((j - 1) * (m_terrainHeight - 1)) + i;
+				index = ((j - 1) * (mTerrainSize - 1)) + i;
 
 				sum[0] += normals[index].x;
 				sum[1] += normals[index].y;
@@ -372,9 +239,9 @@ bool Terrain::CalculateNormals()
 			}
 
 			// Upper left face.
-			if (((i - 1) >= 0) && (j < (m_terrainHeight - 1)))
+			if (((i - 1) >= 0) && (j < (mTerrainSize - 1)))
 			{
-				index = (j * (m_terrainHeight - 1)) + (i - 1);
+				index = (j * (mTerrainSize - 1)) + (i - 1);
 
 				sum[0] += normals[index].x;
 				sum[1] += normals[index].y;
@@ -383,9 +250,9 @@ bool Terrain::CalculateNormals()
 			}
 
 			// Upper right face.
-			if ((i < (m_terrainWidth - 1)) && (j < (m_terrainHeight - 1)))
+			if ((i < (mTerrainSize - 1)) && (j < (mTerrainSize - 1)))
 			{
-				index = (j * (m_terrainHeight - 1)) + i;
+				index = (j * (mTerrainSize - 1)) + i;
 
 				sum[0] += normals[index].x;
 				sum[1] += normals[index].y;
@@ -402,7 +269,7 @@ bool Terrain::CalculateNormals()
 			length = sqrt((sum[0] * sum[0]) + (sum[1] * sum[1]) + (sum[2] * sum[2]));
 
 			// Get an index to the vertex location in the height map array.
-			index = (j * m_terrainHeight) + i;
+			index = (j * mTerrainSize) + i;
 
 			// Normalize the final shared normal for this vertex and store it in the height map array.
 			m_heightMap[index].nx = (sum[0] / length);
@@ -436,10 +303,10 @@ void Terrain::CalculateTextureCoordinates()
 
 
 	// Calculate how much to increment the texture coordinates by.
-	incrementValue = (float)TEXTURE_REPEAT / (float)m_terrainWidth;
+	incrementValue = (float)TEXTURE_REPEAT / (float)mTerrainSize;
 
 	// Calculate how many times to repeat the texture.
-	incrementCount = m_terrainWidth / TEXTURE_REPEAT;
+	incrementCount = mTerrainSize / TEXTURE_REPEAT;
 
 	// Initialize the tu and tv coordinate values.
 	tuCoordinate = 0.0f;
@@ -450,13 +317,13 @@ void Terrain::CalculateTextureCoordinates()
 	tvCount = 0;
 
 	// Loop through the entire height map and calculate the tu and tv texture coordinates for each vertex.
-	for (j = 0; j < m_terrainHeight; j++)
+	for (j = 0; j < mTerrainSize; j++)
 	{
-		for (i = 0; i < m_terrainWidth; i++)
+		for (i = 0; i < mTerrainSize; i++)
 		{
 			// Store the texture coordinate in the height map.
-			m_heightMap[(m_terrainHeight * j) + i].tu = tuCoordinate;
-			m_heightMap[(m_terrainHeight * j) + i].tv = tvCoordinate;
+			m_heightMap[(mTerrainSize * j) + i].tu = tuCoordinate;
+			m_heightMap[(mTerrainSize * j) + i].tv = tvCoordinate;
 
 			// Increment the tu texture coordinate by the increment value and increment the index by one.
 			tuCoordinate += incrementValue;
@@ -522,7 +389,6 @@ void Terrain::ReleaseTexture()
 
 bool Terrain::InitializeBuffers(ID3D11Device* device)
 {
-	VertexType* vertices;
 	unsigned long* indices;
 	int index, i, j;
 	D3D11_BUFFER_DESC vertexBufferDesc, indexBufferDesc;
@@ -533,14 +399,14 @@ bool Terrain::InitializeBuffers(ID3D11Device* device)
 
 
 	// Calculate the number of vertices in the terrain mesh.
-	m_vertexCount = (m_terrainWidth - 1) * (m_terrainHeight - 1) * 6;
+	m_vertexCount = (mTerrainSize - 1) * (mTerrainSize - 1) * 6;
 
 	// Set the index count to the same as the vertex count.
 	m_indexCount = m_vertexCount;
 
 	// Create the vertex array.
-	vertices = new VertexType[m_vertexCount];
-	if (!vertices)
+	m_vertices = new VertexType[m_vertexCount];
+	if (!m_vertices)
 	{
 		return false;
 	}
@@ -556,14 +422,14 @@ bool Terrain::InitializeBuffers(ID3D11Device* device)
 	index = 0;
 
 	// Load the vertex and index array with the terrain data.
-	for (j = 0; j < (m_terrainHeight - 1); j++)
+	for (j = 0; j < (mTerrainSize - 1); j++)
 	{
-		for (i = 0; i < (m_terrainWidth - 1); i++)
+		for (i = 0; i < (mTerrainSize - 1); i++)
 		{
-			index1 = (m_terrainHeight * j) + i;          // Bottom left.
-			index2 = (m_terrainHeight * j) + (i + 1);      // Bottom right.
-			index3 = (m_terrainHeight * (j + 1)) + i;      // Upper left.
-			index4 = (m_terrainHeight * (j + 1)) + (i + 1);  // Upper right.
+			index1 = (mTerrainSize * j) + i;          // Bottom left.
+			index2 = (mTerrainSize * j) + (i + 1);      // Bottom right.
+			index3 = (mTerrainSize * (j + 1)) + i;      // Upper left.
+			index4 = (mTerrainSize * (j + 1)) + (i + 1);  // Upper right.
 
 															 // Upper left.
 			tv = m_heightMap[index3].tv;
@@ -571,9 +437,9 @@ bool Terrain::InitializeBuffers(ID3D11Device* device)
 			// Modify the texture coordinates to cover the top edge.
 			if (tv == 1.0f) { tv = 0.0f; }
 
-			vertices[index].position = XMFLOAT3(m_heightMap[index3].x, m_heightMap[index3].y, m_heightMap[index3].z);
-			vertices[index].texture = XMFLOAT2(m_heightMap[index3].tu, tv);
-			vertices[index].normal = XMFLOAT3(m_heightMap[index3].nx, m_heightMap[index3].ny, m_heightMap[index3].nz);
+			m_vertices[index].position = XMFLOAT3(m_heightMap[index3].x, m_heightMap[index3].y, m_heightMap[index3].z);
+			m_vertices[index].texture = XMFLOAT2(m_heightMap[index3].tu, tv);
+			m_vertices[index].normal = XMFLOAT3(m_heightMap[index3].nx, m_heightMap[index3].ny, m_heightMap[index3].nz);
 			indices[index] = index;
 			index++;
 
@@ -585,23 +451,23 @@ bool Terrain::InitializeBuffers(ID3D11Device* device)
 			if (tu == 0.0f) { tu = 1.0f; }
 			if (tv == 1.0f) { tv = 0.0f; }
 
-			vertices[index].position = XMFLOAT3(m_heightMap[index4].x, m_heightMap[index4].y, m_heightMap[index4].z);
-			vertices[index].texture = XMFLOAT2(tu, tv);
-			vertices[index].normal = XMFLOAT3(m_heightMap[index4].nx, m_heightMap[index4].ny, m_heightMap[index4].nz);
+			m_vertices[index].position = XMFLOAT3(m_heightMap[index4].x, m_heightMap[index4].y, m_heightMap[index4].z);
+			m_vertices[index].texture = XMFLOAT2(tu, tv);
+			m_vertices[index].normal = XMFLOAT3(m_heightMap[index4].nx, m_heightMap[index4].ny, m_heightMap[index4].nz);
 			indices[index] = index;
 			index++;
 
 			// Bottom left.
-			vertices[index].position = XMFLOAT3(m_heightMap[index1].x, m_heightMap[index1].y, m_heightMap[index1].z);
-			vertices[index].texture = XMFLOAT2(m_heightMap[index1].tu, m_heightMap[index1].tv);
-			vertices[index].normal = XMFLOAT3(m_heightMap[index1].nx, m_heightMap[index1].ny, m_heightMap[index1].nz);
+			m_vertices[index].position = XMFLOAT3(m_heightMap[index1].x, m_heightMap[index1].y, m_heightMap[index1].z);
+			m_vertices[index].texture = XMFLOAT2(m_heightMap[index1].tu, m_heightMap[index1].tv);
+			m_vertices[index].normal = XMFLOAT3(m_heightMap[index1].nx, m_heightMap[index1].ny, m_heightMap[index1].nz);
 			indices[index] = index;
 			index++;
 
 			// Bottom left.
-			vertices[index].position = XMFLOAT3(m_heightMap[index1].x, m_heightMap[index1].y, m_heightMap[index1].z);
-			vertices[index].texture = XMFLOAT2(m_heightMap[index1].tu, m_heightMap[index1].tv);
-			vertices[index].normal = XMFLOAT3(m_heightMap[index1].nx, m_heightMap[index1].ny, m_heightMap[index1].nz);
+			m_vertices[index].position = XMFLOAT3(m_heightMap[index1].x, m_heightMap[index1].y, m_heightMap[index1].z);
+			m_vertices[index].texture = XMFLOAT2(m_heightMap[index1].tu, m_heightMap[index1].tv);
+			m_vertices[index].normal = XMFLOAT3(m_heightMap[index1].nx, m_heightMap[index1].ny, m_heightMap[index1].nz);
 			indices[index] = index;
 			index++;
 
@@ -613,9 +479,9 @@ bool Terrain::InitializeBuffers(ID3D11Device* device)
 			if (tu == 0.0f) { tu = 1.0f; }
 			if (tv == 1.0f) { tv = 0.0f; }
 
-			vertices[index].position = XMFLOAT3(m_heightMap[index4].x, m_heightMap[index4].y, m_heightMap[index4].z);
-			vertices[index].texture = XMFLOAT2(tu, tv);
-			vertices[index].normal = XMFLOAT3(m_heightMap[index4].nx, m_heightMap[index4].ny, m_heightMap[index4].nz);
+			m_vertices[index].position = XMFLOAT3(m_heightMap[index4].x, m_heightMap[index4].y, m_heightMap[index4].z);
+			m_vertices[index].texture = XMFLOAT2(tu, tv);
+			m_vertices[index].normal = XMFLOAT3(m_heightMap[index4].nx, m_heightMap[index4].ny, m_heightMap[index4].nz);
 			indices[index] = index;
 			index++;
 
@@ -625,14 +491,13 @@ bool Terrain::InitializeBuffers(ID3D11Device* device)
 			// Modify the texture coordinates to cover the right edge.
 			if (tu == 0.0f) { tu = 1.0f; }
 
-			vertices[index].position = XMFLOAT3(m_heightMap[index2].x, m_heightMap[index2].y, m_heightMap[index2].z);
-			vertices[index].texture = XMFLOAT2(tu, m_heightMap[index2].tv);
-			vertices[index].normal = XMFLOAT3(m_heightMap[index2].nx, m_heightMap[index2].ny, m_heightMap[index2].nz);
+			m_vertices[index].position = XMFLOAT3(m_heightMap[index2].x, m_heightMap[index2].y, m_heightMap[index2].z);
+			m_vertices[index].texture = XMFLOAT2(tu, m_heightMap[index2].tv);
+			m_vertices[index].normal = XMFLOAT3(m_heightMap[index2].nx, m_heightMap[index2].ny, m_heightMap[index2].nz);
 			indices[index] = index;
 			index++;
 		}
 	}
-
 	// Set up the description of the static vertex buffer.
 	vertexBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
 	vertexBufferDesc.ByteWidth = sizeof(VertexType) * m_vertexCount;
@@ -642,7 +507,7 @@ bool Terrain::InitializeBuffers(ID3D11Device* device)
 	vertexBufferDesc.StructureByteStride = 0;
 
 	// Give the subresource structure a pointer to the vertex data.
-	vertexData.pSysMem = vertices;
+	vertexData.pSysMem = m_vertices;
 	vertexData.SysMemPitch = 0;
 	vertexData.SysMemSlicePitch = 0;
 
@@ -673,14 +538,30 @@ bool Terrain::InitializeBuffers(ID3D11Device* device)
 		return false;
 	}
 
-	// Release the arrays now that the buffers have been created and loaded.
-	delete[] vertices;
-	vertices = 0;
-
 	delete[] indices;
 	indices = 0;
+	delete[] m_vertices;
+	m_vertices = 0;
+
+	//for (size_t i = 0; i < sizeof(m_vertices); i++)
+	//{
+	//	MakeSpherical(&m_vertices[i]);
+	//}
 
 	return true;
+}
+
+void Terrain::MakeSpherical(VertexType* v)
+{
+	float x2 = (*v).position.x * (*v).position.x;
+	float y2 = (*v).position.y * (*v).position.y;
+	float z2 = (*v).position.z * (*v).position.z;
+	XMFLOAT3 s;
+	s.x = (*v).position.x * sqrtf(1.0f - y2 / 2.0f - z2 / 2.0f + y2 * z2 / 3.0f);
+	s.y = (*v).position.y * sqrtf(1.0f - x2 / 2.0f - z2 / 2.0f + x2 * z2 / 3.0f);
+	s.z = (*v).position.z * sqrtf(1.0f - x2 / 2.0f - y2 / 2.0f + x2 * y2 / 3.0f);
+	(*v).normal = s;
+	(*v).position = (*v).normal;
 }
 
 void Terrain::ShutdownBuffers()
@@ -703,6 +584,7 @@ int Terrain::GetVertexCount()
 void Terrain::CopyVertexArray(void* vertexList)
 {
 	memcpy(vertexList, m_vertices, sizeof(VertexType) * m_vertexCount);
+
 	return;
 }
 
@@ -727,19 +609,19 @@ void Terrain::RenderBuffers(ID3D11DeviceContext* deviceContext)
 	return;
 }
 
-void Terrain::SetFrameTime(float time)
-{
-	if (m_frameTime > 100)
-	{
-		m_frameTime = 0;
-	}
-	else
-	{
-		m_frameTime += time;
-	}
-
-	return;
-}
+//void Terrain::SetFrameTime(float time)
+//{
+//	if (m_frameTime > 100)
+//	{
+//		m_frameTime = 0;
+//	}
+//	else
+//	{
+//		m_frameTime += time;
+//	}
+//
+//	return;
+//}
 
 bool Terrain::UpdateBuffers(ID3D11DeviceContext* deviceContext)
 {
@@ -763,14 +645,14 @@ bool Terrain::UpdateBuffers(ID3D11DeviceContext* deviceContext)
 	CalculateNormals();
 
 	index = 0;
-	for (int j = 0; j < (m_terrainHeight - 1); j++)
+	for (int j = 0; j < (mTerrainSize - 1); j++)
 	{
-		for (int i = 0; i < (m_terrainWidth - 1); i++)
+		for (int i = 0; i < (mTerrainSize - 1); i++)
 		{
-			index1 = (m_terrainHeight * j) + i;
-			index2 = (m_terrainHeight * j) + (i + 1);
-			index3 = (m_terrainHeight * (j + 1)) + i;
-			index4 = (m_terrainHeight * (j + 1)) + (i + 1);
+			index1 = (mTerrainSize * j) + i;
+			index2 = (mTerrainSize * j) + (i + 1);
+			index3 = (mTerrainSize * (j + 1)) + i;
+			index4 = (mTerrainSize * (j + 1)) + (i + 1);
 
 
 			tv = m_heightMap[index3].tv;
@@ -863,17 +745,17 @@ XMFLOAT3* Terrain::GetPosition()
 	return &mPosition;
 }
 
-bool Terrain::NeedsToUpdate()
-{
-	if (mPreviousSeed != mSeed || mPreviousTerrainHeight != mTerrainHeight || mPreviousNoiseSize != mNoiseSize || mPersistence != mPreviousPersistence || mPreviousOctaves != mOctaves)
-	{
-		mPreviousSeed = mSeed;
-		mPreviousTerrainHeight = mTerrainHeight;
-		mPreviousNoiseSize = mNoiseSize;
-		mPreviousPersistence = mPersistence;
-		mPreviousOctaves = mOctaves;
-
-		return true;
-	}
-	return false;
-}
+//bool Terrain::NeedsToUpdate()
+//{
+//	if (mPreviousSeed != mSeed || mPreviousTerrainHeight != mTerrainHeight || mPreviousNoiseSize != mNoiseSize || mPersistence != mPreviousPersistence || mPreviousOctaves != mOctaves)
+//	{
+//		mPreviousSeed = mSeed;
+//		mPreviousTerrainHeight = mTerrainHeight;
+//		mPreviousNoiseSize = mNoiseSize;
+//		mPreviousPersistence = mPersistence;
+//		mPreviousOctaves = mOctaves;
+//
+//		return true;
+//	}
+//	return false;
+//}

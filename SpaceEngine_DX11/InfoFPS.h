@@ -15,7 +15,7 @@ public:
 
 	void Initialize();
 	void Frame();
-	int GetFPS();
+	int* GetFPS();
 
 private:
 	int m_FPS, m_count;

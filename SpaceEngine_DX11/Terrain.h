@@ -15,14 +15,12 @@ const int TEXTURE_REPEAT = 8;
 class Terrain
 {
 private:
-
 	struct VertexType
 	{
 		XMFLOAT3 position;
 		XMFLOAT2 texture;
 		XMFLOAT3 normal;
 	};
-
 	struct HeightMapType
 	{
 		float x, y, z;
@@ -40,7 +38,7 @@ public:
 	Terrain(const Terrain&);
 	~Terrain();
 
-	bool Initialize(ID3D11Device*, PerlinNoise*, char*, WCHAR*, float, float, float, int, int);
+	bool Initialize(ID3D11Device*, PerlinNoise*, WCHAR*, XMFLOAT3, int, int);
 	void Shutdown();
 	void Render(ID3D11DeviceContext*);
 	bool UpdateBuffers(ID3D11DeviceContext* deviceContext);
@@ -61,11 +59,9 @@ public:
 	
 
 private:
-	bool LoadHeightMap(char*);
 	void NormalizeHeightMap();
 	bool CalculateNormals();
 	void ShutdownHeightMap();
-	void ConstructGrid();
 	void GenerateFractalTerrain();
 
 	void CalculateTextureCoordinates();
@@ -76,12 +72,13 @@ private:
 	void ShutdownBuffers();
 	void RenderBuffers(ID3D11DeviceContext*);
 
+	void MakeSpherical(VertexType* v);
+
 private:
-	int m_terrainWidth, m_terrainHeight;
+	int mTerrainSize;
 	int m_vertexCount, m_indexCount;
 
 	XMFLOAT3 mPosition;
-	XMFLOAT3 mPreviousPosition;
 
 	ID3D11Buffer *m_vertexBuffer, *m_indexBuffer;
 	VertexType* m_vertices;
@@ -94,17 +91,6 @@ private:
 	float mNoiseSize;
 	float mPersistence;
 	int mOctaves;
-
-	int mPreviousSeed;
-	int mPreviousTerrainHeight;
-	float mPreviousNoiseSize;
-	float mPreviousPersistence;
-	int mPreviousOctaves;
-
-	float m_frameTime;
-
-	bool m_willUpdate;
-
 };
 
 #endif

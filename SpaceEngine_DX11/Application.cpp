@@ -81,46 +81,48 @@ bool Application::Initialize(HINSTANCE hinstance, HWND hwnd, int screenWidth, in
 	m_Camera->GetViewMatrix(baseViewMatrix);
 
 	// Set the initial position of the camera.
-	cameraX = 50.0f;
+	cameraX = 0.0f;
 	cameraY = 10.0f;
-	cameraZ = -50.0f;
+	cameraZ = 0.0f;
 
 	m_Camera->SetPosition(cameraX, cameraY, cameraZ);
 
 	m_PerlinNoise = new PerlinNoise();
+	XMFLOAT3* pos = new XMFLOAT3(0, 0, 0);
+	m_QuadTreeRootNode = new QuadTree(0, m_Direct3D->GetDevice(), m_PerlinNoise, *pos, 4);
 
-	int mapSize = 1;
+	int mapSize = 4;
 
-	for (int i = 0; i < pow(mapSize,2); i++)
+	for (int i = 0; i < pow(mapSize, 2); i++)
 	{
 		m_Terrain.push_back(new Terrain());
 		//m_QuadTree.push_back(new QuadTree());
 	}
-	
-	int w = 400, h = 400;
 
-	
-	float p = 0, q = 0;
-	for (vector<Terrain*>::iterator it = m_Terrain.begin(); it != m_Terrain.end(); it++)
-	{
-		result = (*it)->Initialize(m_Direct3D->GetDevice(), m_PerlinNoise, "heightmap01.bmp", L"TEX_STONE_COLOR.dds", (p - 1) * (w - 1), 0, (q - 1) * (h - 1), w, h);
+	//int terrainSize = 256;
 
-		if (!result)
-		{
-			MessageBox(hwnd, L"Could not initialize the terrain object.", L"Error", MB_OK);
-			return false;
-		}
-		if (p == mapSize - 1)
-		{
-			q++;
-			p = 0;
-		}
-		else
-		{
-			p++;
-		}
-	}
-	
+	//float p = 0, q = 0;
+	//for (vector<Terrain*>::iterator it = m_Terrain.begin(); it != m_Terrain.end(); it++)
+	//{
+	//	XMFLOAT3 pos = XMFLOAT3((p - 1) * (terrainSize - 1), 0, (q - 1) * (terrainSize - 1));
+	//	result = (*it)->Initialize(m_Direct3D->GetDevice(), m_PerlinNoise, L"TEX_STONE_COLOR.dds", pos, terrainSize);
+
+	//	if (!result)
+	//	{
+	//		MessageBox(hwnd, L"Could not initialize the terrain object.", L"Error", MB_OK);
+	//		return false;
+	//	}
+	//	if (p == mapSize - 1)
+	//	{
+	//		q++;
+	//		p = 0;
+	//	}
+	//	else
+	//	{
+	//		p++;
+	//	}
+	//}
+
 	m_Frustum = new Frustum;
 	if (!m_Frustum)
 	{
@@ -128,9 +130,10 @@ bool Application::Initialize(HINSTANCE hinstance, HWND hwnd, int screenWidth, in
 	}
 
 	//int terrainNum = 0;
+
 	//for (vector<QuadTree*>::iterator it = m_QuadTree.begin(); it != m_QuadTree.end(); it++)
 	//{
-	//	result = (*it)->Initialize(m_Terrain[terrainNum], m_Direct3D->GetDevice());
+	//	result = (*it)->Initialize(m_Terrain[0], m_Direct3D->GetDevice());
 	//	//Initialize the quad tree object.
 	//	if (!result)
 	//	{
@@ -139,7 +142,7 @@ bool Application::Initialize(HINSTANCE hinstance, HWND hwnd, int screenWidth, in
 	//	}
 	//	terrainNum++;
 	//}
-	
+
 	// Create the color shader object.
 	m_ShaderColor = new ShaderColor;
 	if (!m_ShaderColor)
@@ -276,30 +279,32 @@ bool Application::Initialize(HINSTANCE hinstance, HWND hwnd, int screenWidth, in
 		return 0;
 	}
 
-	// Create a tweak bar
+	//// Create a tweak bar
 	TwBar *bar = TwNewBar("Terrain Parameters");
 	TwDefine(" GLOBAL help='Help Menu' "); // Message added to the help bar.
-	//int barSize[2] = { 300, 200 };
-	//int barPos[2] = { 1280 - barSize[1] - 110, 10 };
+	int barSize[2] = { 300, 200 };
+	int barPos[2] = { 1280 - barSize[1] - 110, 10 };
 
-	int barSize[2] = { 300, 500 };
-	int barPos[2] = { 10, 10 };
+	//int barSize[2] = { 300, 500 };
+	//int barPos[2] = { 10, 10 };
 
-	TwSetParam(bar, NULL, "size", TW_PARAM_INT32, 2, barSize);
-	TwSetParam(bar, NULL, "position", TW_PARAM_INT32, 2, barPos);
-	int width = 150; // pixels
-	TwSetParam(bar, NULL, "valueswidth", TW_PARAM_INT32, 1, &width);
+	//TwSetParam(bar, NULL, "size", TW_PARAM_INT32, 2, barSize);
+	//TwSetParam(bar, NULL, "position", TW_PARAM_INT32, 2, barPos);
+	//int width = 150; // pixels
+	//TwSetParam(bar, NULL, "valueswidth", TW_PARAM_INT32, 1, &width);
 
-	//TERRAIN
-	TwAddVarRW(bar, "Seed", TW_TYPE_INT32, m_Terrain[0]->GetSeed(), "group=TERRAIN");
-	TwAddVarRW(bar, "Amplitude", TW_TYPE_INT32, m_Terrain[0]->GetTerrainHeight(), "group=TERRAIN");
-	TwAddVarRW(bar, "Frequency", TW_TYPE_FLOAT, m_Terrain[0]->GetNoiseSize(), "group=TERRAIN");
-	TwAddVarRW(bar, "Persistence", TW_TYPE_FLOAT, m_Terrain[0]->GetPersistence(), "group=TERRAIN");
-	TwAddVarRW(bar, "Octaves", TW_TYPE_INT32, m_Terrain[0]->GetOctaves(), "group=TERRAIN");
+	////TERRAIN
+	//TwAddVarRW(bar, "Seed", TW_TYPE_INT32, m_Terrain[0]->GetSeed(), "group=TERRAIN");
+	//TwAddVarRW(bar, "Amplitude", TW_TYPE_INT32, m_Terrain[0]->GetTerrainHeight(), "group=TERRAIN");
+	//TwAddVarRW(bar, "Frequency", TW_TYPE_FLOAT, m_Terrain[0]->GetNoiseSize(), "group=TERRAIN");
+	//TwAddVarRW(bar, "Persistence", TW_TYPE_FLOAT, m_Terrain[0]->GetPersistence(), "group=TERRAIN");
+	//TwAddVarRW(bar, "Octaves", TW_TYPE_INT32, m_Terrain[0]->GetOctaves(), "group=TERRAIN");
 	TwAddVarRW(bar, "Wireframe", TW_TYPE_BOOL32, m_Direct3D->GetWireframeValue(), "group=TERRAIN");
+	TwAddVarRW(bar, "FPS", TW_TYPE_INT32, m_Fps->GetFPS(), "group=TERRAIN");
 
-	//LIGHTING
-	TwAddVarRW(bar, "Direction", TW_TYPE_DIR3F, m_Light->GetDirection(), "group=LIGHTING");
+
+	////LIGHTING
+	//TwAddVarRW(bar, "Direction", TW_TYPE_DIR3F, m_Light->GetDirection(), "group=LIGHTING");
 
 	return true;
 }
@@ -444,7 +449,7 @@ bool Application::Frame()
 	m_Cpu->Frame();
 
 	// Update the FPS value in the text object.
-	result = m_Text->SetFPS(m_Fps->GetFPS(), m_Direct3D->GetDeviceContext());
+	result = m_Text->SetFPS(*m_Fps->GetFPS(), m_Direct3D->GetDeviceContext());
 	if (!result)
 	{
 		return false;
@@ -572,33 +577,33 @@ bool Application::RenderGraphics()
 
 	m_Frustum->ConstructFrustum(SCREEN_DEPTH, projectionMatrix, viewMatrix);
 
+	m_Terrain.clear();
+	m_QuadTreeRootNode->GetVisibleTerrain(&m_Camera->GetPosition(), &m_Terrain);
+	//m_QuadTreeRootNode->RenderTree(m_Direct3D->GetDeviceContext(), &m_Camera->GetPosition());
+	
 	// Set the terrain shader parameters that it will use for rendering.
 	for (vector<Terrain*>::iterator it = m_Terrain.begin(); it != m_Terrain.end(); it++)
 	{
-		(*it)->SetFrameTime(m_Timer->GetDeltaTime());
+		(*it)->Render(m_Direct3D->GetDeviceContext());
 		result = m_ShaderTerrain->SetShaderParameters(m_Direct3D->GetDeviceContext(), worldMatrix, viewMatrix, projectionMatrix, *m_Light->GetAmbientColor(), *m_Light->GetDiffuseColor(), *m_Light->GetDirection(), (*it)->GetTexture());
-		if (!result)
-		{
-			return false;
-		}
+		result = m_ShaderTerrain->Render(m_Direct3D->GetDeviceContext(), (*it)->GetIndexCount(), worldMatrix, viewMatrix, projectionMatrix, *m_Light->GetAmbientColor(), *m_Light->GetDiffuseColor(), *m_Light->GetDirection(), (*it)->GetTexture());
+		//if (!result) return false;
 	}
 
 	// Render the terrain using the quad tree and terrain shader.
 	int k = 0;
-	for (vector<Terrain*>::iterator it = m_Terrain.begin(); it != m_Terrain.end(); it++)
+	/*for (vector<Terrain*>::iterator it = m_Terrain.begin(); it != m_Terrain.end(); it++)
 	{
 		if ((*it)->NeedsToUpdate())
 		{
 			(*it)->UpdateBuffers(m_Direct3D->GetDeviceContext());
-			//m_QuadTree[k]->Shutdown();
-			//m_QuadTree[k++]->Initialize((*it), m_Direct3D->GetDevice());
 		}
-	}
+	}*/
 
 	//for (vector<QuadTree*>::iterator it = m_QuadTree.begin(); it != m_QuadTree.end(); it++)
-	{
-		//(*it)->Render(m_Frustum, m_Direct3D->GetDeviceContext(), m_ShaderTerrain);
-	}
+	//{
+	//	(*it)->Render(&m_Camera->GetPosition(), m_Frustum, m_Direct3D->GetDeviceContext(), m_ShaderTerrain);
+	//}
 
 	// Set the number of rendered terrain triangles since some were culled.
 	/*result = m_Text->SetRenderCount(m_QuadTree->GetDrawCount(), m_Direct3D->GetDeviceContext());
@@ -608,40 +613,39 @@ bool Application::RenderGraphics()
 	}*/
 
 	// Render the terrain buffers.
-	for (vector<Terrain*>::iterator it = m_Terrain.begin(); it != m_Terrain.end(); it++)
+	/*for (vector<Terrain*>::iterator it = m_Terrain.begin(); it != m_Terrain.end(); it++)
 	{
 		(*it)->Render(m_Direct3D->GetDeviceContext());
 
-		result = m_ShaderTerrain->Render(m_Direct3D->GetDeviceContext(), (*it)->GetIndexCount(), worldMatrix, viewMatrix, projectionMatrix, *m_Light->GetAmbientColor(), *m_Light->GetDiffuseColor(), *m_Light->GetDirection(), (*it)->GetTexture());
 		if (!result)
 		{
 			return false;
 		}
-	}
+	}*/
 
 	TwDraw();
 
-	if (m_Direct3D->GetWireframeValue())
-	{
-		// Turn off the Z buffer to begin all 2D rendering.
-		m_Direct3D->DisableZBuffer();
+	//if (m_Direct3D->GetWireframeValue())
+	//{
+	//	// Turn off the Z buffer to begin all 2D rendering.
+	//	m_Direct3D->DisableZBuffer();
 
-		// Turn on the alpha blending before rendering the text.
-		m_Direct3D->TurnOnAlphaBlending();
+	//	// Turn on the alpha blending before rendering the text.
+	//	m_Direct3D->TurnOnAlphaBlending();
 
-		// Render the text user interface elements.
-	/*	result = m_Text->Render(m_Direct3D->GetDeviceContext(), m_ShaderFont, worldMatrix, orthoMatrix);
-		if (!result)
-		{
-			return false;
-		}*/
+	//	// Render the text user interface elements.
+	///*	result = m_Text->Render(m_Direct3D->GetDeviceContext(), m_ShaderFont, worldMatrix, orthoMatrix);
+	//	if (!result)
+	//	{
+	//		return false;
+	//	}*/
 
-		// Turn off alpha blending after rendering the text.
-		m_Direct3D->TurnOffAlphaBlending();
+	//	// Turn off alpha blending after rendering the text.
+	//	m_Direct3D->TurnOffAlphaBlending();
 
-		// Turn the Z buffer back on now that all 2D rendering has completed.
-		m_Direct3D->EnableZBuffer();
-	}
+	//	// Turn the Z buffer back on now that all 2D rendering has completed.
+	//	m_Direct3D->EnableZBuffer();
+	//}
 
 
 	// Present the rendered scene to the screen.

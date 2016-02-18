@@ -1,7 +1,7 @@
 #ifndef _Application_H_
 #define _Application_H_
 
-const bool FULL_SCREEN = true;
+const bool FULL_SCREEN = false;
 const bool VSYNC_ENABLED = true;
 const float SCREEN_DEPTH = 3000.0f; //Change render distance
 const float SCREEN_NEAR = 0.1f;
@@ -58,7 +58,7 @@ private:
 	ShaderTerrain* m_ShaderTerrain;
 	Light* m_Light;
 	Frustum* m_Frustum;
-	vector<QuadTree*> m_QuadTree;
+	QuadTree* m_QuadTreeRootNode;
 	PerlinNoise* m_PerlinNoise;
 
 };

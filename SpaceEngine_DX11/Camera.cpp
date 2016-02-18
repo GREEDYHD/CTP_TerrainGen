@@ -20,7 +20,8 @@ Camera::~Camera()
 {
 
 }
-void* Camera::operator new(unsigned int memorySize)
+
+void* Camera::operator new(size_t memorySize)
 {
 	unsigned int alignment;
 	void* memoryBlockPtr;
